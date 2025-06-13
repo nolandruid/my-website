@@ -1,0 +1,25 @@
+name: Import GitHub Issues to Motion
+on:
+  issues:
+    types: [opened] # Triggers when a new issue is opened
+jobs:
+  send-to-motion:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Issue to Motion
+        env:
+          MOTION_API_KEY: ${{ secrets.MOTION_API_KEY }}
+          MOTION_API_URL: "https://api.usemotion.com/v1/tasks" # Motion’s actual task creation endpoint
+          MOTION_PROJECT_ID: "1-qERhTV20dY0ojvMQUFP" # project ID
+          MOTION_WORKSPACE_ID: "6NX0BVOLP-fjYA7TUwcrk" # workspace ID if required, or remove if not needed
+        run: |
+          curl -X POST "$MOTION_API_URL" \
+          -H "Authorization: Bearer $MOTION_API_KEY" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "title": "${{ github.event.issue.title }}",
+            "description": "${{ github.event.issue.body }}",
+            "project_id": "$MOTION_PROJECT_ID",
+            "workspace_id": "$MOTION_WORKSPACE_ID", // Remove this line if not required
+            "due_date": "${{ github.event.issue.created_at }}"
+          }'
