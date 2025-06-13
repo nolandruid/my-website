@@ -14,7 +14,7 @@ jobs:
           MOTION_WORKSPACE_ID: "6NX0BVOLP-fjYA7TUwcrk" # workspace ID if required, or remove if not needed
         run: |
           curl -X POST "$MOTION_API_URL" \
-          -H "Authorization: Bearer $MOTION_API_KEY" \
+          -H "X-API-Key: $MOTION_API_KEY" \
           -H "Content-Type: application/json" \
           -d '{
             "title": "${{ github.event.issue.title }}",
