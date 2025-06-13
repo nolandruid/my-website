@@ -13,13 +13,15 @@ jobs:
           MOTION_PROJECT_ID: "1-qERhTV20dY0ojvMQUFP" # project ID
           MOTION_WORKSPACE_ID: "6NX0BVOLP-fjYA7TUwcrk" # workspace ID if required, or remove if not needed
         run: |
-          curl -X POST "$MOTION_API_URL" \
-          -H "X-API-Key: $MOTION_API_KEY" \
-          -H "Content-Type: application/json" \
-          -d '{
+          json_data='{
             "title": "${{ github.event.issue.title }}",
             "description": "${{ github.event.issue.body }}",
             "project_id": "$MOTION_PROJECT_ID",
-            "workspace_id": "$MOTION_WORKSPACE_ID", // Remove this line if not required
+            "workspace_id": "$MOTION_WORKSPACE_ID",
             "due_date": "${{ github.event.issue.created_at }}"
           }'
+          echo "Final JSON: $json_data"
+          curl -X POST "$MOTION_API_URL" \
+          -H "X-API-Key: $MOTION_API_KEY" \
+          -H "Content-Type: application/json" \
+          -d "$json_data"
