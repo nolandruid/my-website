@@ -1,7 +1,7 @@
 name: Import GitHub Issues to Motion
 on:
   issues:
-    types: [opened] # Triggers when a new issue is opened
+    types: [opened]
 jobs:
   send-to-motion:
     runs-on: ubuntu-latest
@@ -9,19 +9,25 @@ jobs:
       - name: Send Issue to Motion
         env:
           MOTION_API_KEY: ${{ secrets.MOTION_API_KEY }}
-          MOTION_API_URL: "https://api.usemotion.com/v1/tasks" # Motion’s actual task creation endpoint
-          MOTION_PROJECT_ID: "1-qERhTV20dY0ojvMQUFP" # project ID
-          MOTION_WORKSPACE_ID: "6NX0BVOLP-fjYA7TUwcrk" # workspace ID if required, or remove if not needed
+          MOTION_API_URL: "https://api.usemotion.com/v1/tasks"
+          MOTION_PROJECT_ID: "1-qERhTV20dY0ojvMQUFP"
+          MOTION_WORKSPACE_ID: "6NX0BVOLP-fjYA7TUwcrk"
         run: |
-          json_data='{
+          response=$(curl -s -w "%{http_code}" -X POST "$MOTION_API_URL" \
+          -H "X-API-Key: $MOTION_API_KEY" \
+          -H "Content-Type: application/json" \
+          -d @- <<'EOF'
+          {
             "title": "${{ github.event.issue.title }}",
             "description": "${{ github.event.issue.body }}",
             "project_id": "$MOTION_PROJECT_ID",
             "workspace_id": "$MOTION_WORKSPACE_ID",
-            "due_date": "${{ github.event.issue.created_at }}"
-          }'
-          echo "Final JSON: $json_data"
-          curl -X POST "$MOTION_API_URL" \
-          -H "X-API-Key: $MOTION_API_KEY" \
-          -H "Content-Type: application/json" \
-          -d "$json_data"
+            "due_date": "${{ github.event.issue.created_at }}",
+            "schedule": "Work Hours",
+            "priority": "MEDIUM",
+            "duration": 60
+          }
+          EOF
+          -o response.json)
+          echo "HTTP Status: $response"
+          cat response.json
