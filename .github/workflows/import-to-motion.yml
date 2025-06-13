@@ -16,7 +16,8 @@ jobs:
           response=$(curl -s -w "%{http_code}" -X POST "$MOTION_API_URL" \
           -H "X-API-Key: $MOTION_API_KEY" \
           -H "Content-Type: application/json" \
-          -d @- <<'EOF'
+          -d @- <<'EOF' -o response.json)
+
           {
             "title": "${{ github.event.issue.title }}",
             "description": "${{ github.event.issue.body }}",
@@ -28,6 +29,5 @@ jobs:
             "duration": 60
           }
           EOF
-          -o response.json)
           echo "HTTP Status: $response"
           cat response.json
