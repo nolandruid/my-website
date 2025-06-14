@@ -3,10 +3,11 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Nolan's Website</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="./assets/css/styles.css">
     <script>
         tailwind.config = {
             theme: {
@@ -20,11 +21,16 @@
         }
     </script>
     <style>
+        html,
         body {
             background-color: black;
             background-image: radial-gradient(circle, rgba(50, 50, 50, 0.2) 2px, transparent 2px);
             background-size: 50px 50px;
             min-height: 100vh;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
         }
 
         .wave {
@@ -69,13 +75,13 @@
     </style>
 </head>
 
-<body class="bg-black text-light-purple flex flex-col items-center justify-center">
-    <div class="container mx-auto px-4 py-16 text-center">
-        <h1 class="text-5xl md:text-7xl font-bold mb-4">
-            <span class="wave inline-block mr-4">👋</span>Hey, I'm Nolan
+<body class="bg-black text-light-purple flex flex-col items-center justify-center min-h-screen">
+    <div class="container mx-auto px-4 py-8 md:py-16 text-center max-w-screen-lg">
+        <h1 class="text-4xl sm:text-5xl md:text-7xl font-bold mb-4">
+            <span class="wave inline-block mr-2 md:mr-4">👋</span>Hey, I'm Nolan
         </h1>
 
-        <p class="text-2xl md:text-3xl mb-12 text-dark-purple">
+        <p class="text-xl sm:text-2xl md:text-3xl mb-8 md:mb-12 text-dark-purple">
             Website Coming Soon <br>
             <span class="block my-2"></span>
             In the meantime, Let's Connect!
