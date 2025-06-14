@@ -1,0 +1,33 @@
+name: Import GitHub Issues to Motion
+on:
+  issues:
+    types: [opened]
+jobs:
+  send-to-motion:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Issue to Motion
+        env:
+          MOTION_API_KEY: ${{ secrets.MOTION_API_KEY }}
+          MOTION_API_URL: "https://api.usemotion.com/v1/tasks"
+          MOTION_PROJECT_ID: "1-qERhTV20dY0ojvMQUFP"
+          MOTION_WORKSPACE_ID: "6NX0BVOLP-fjYA7TUwcrk"
+        run: |
+          response=$(curl -s -w "%{http_code}" -X POST "$MOTION_API_URL" \
+          -H "X-API-Key: $MOTION_API_KEY" \
+          -H "Content-Type: application/json" \
+          -d @- <<'EOF' -o response.json)
+
+          {
+            "title": "${{ github.event.issue.title }}",
+            "description": "${{ github.event.issue.body }}",
+            "project_id": "$MOTION_PROJECT_ID",
+            "workspace_id": "$MOTION_WORKSPACE_ID",
+            "due_date": "${{ github.event.issue.created_at }}",
+            "schedule": "Work Hours",
+            "priority": "MEDIUM",
+            "duration": 60
+          }
+          EOF
+          echo "HTTP Status: $response"
+          cat response.json
