@@ -38,5 +38,5 @@ The site is currently displaying a temporary "Coming Soon" page with:
 ## Development Plan
 1. Phase 1: Deploy "Coming Soon" landing page *(Current)*
 2. Phase 2: Develop core website structure and design
-3. Phase 3: Add content and portfolio items
+3. Phase 3: Add content and portfolio ixtems
 4. Phase 4: Implement additional features and optimization
