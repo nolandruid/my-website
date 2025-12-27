@@ -29,3 +29,71 @@ body {
         padding-right: 1rem;
     }
 }
+
+/* Riddle page styles */
+.riddle-page {
+    background-color: black;
+    color: white;
+    justify-content: flex-start;
+    align-items: center;
+    text-align: center;
+}
+
+.riddle-container {
+    max-width: 600px;
+    padding: 100px;
+}
+
+.riddle-answer {
+    font-size: 35px;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.riddle-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    flex-wrap: wrap;
+}
+
+.riddle-btn {
+    padding: 15px 30px;
+    font-size: 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: #333;
+    color: #333;
+    transition: opacity .3s ease;
+}
+
+.riddle-btn:hover {
+    opacity: 0.8;
+}
+
+/* Individual button colours */
+#riddle-btn-1 {
+    background-color: #D9DBF1;
+}
+
+#riddle-btn-2 {
+    background-color: #C0DA74;
+}
+
+/* Mobile responsiveness for riddle page */
+@media (max-width: 640px){
+    .riddle-answer {
+        font-size: 20px;
+        margin-bottom: 30px;
+    }
+
+    .riddle-btn {
+        padding: 12px 24px;
+        font-size: 14px;
+    }
+    
+    .riddle-buttons {
+        gap: 15px;
+    }
+}

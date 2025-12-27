@@ -5,17 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Shopify Riddle</title>
     <link rel="stylesheet" href="./assets/css/styles.css">
+    <!--EmailJS SDK-->
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 </head>
 <body class="riddle-page">
     <div class="riddle-container">
         <div class="riddle-answer">
             <p>The answer is Short!</p>
+            <p style="font-size: 30px;">How did you like it?</p>
          </div>
 
         <div class="riddle-buttons">
-            <button id="riddle-btn-1" class="riddle-btn">It was lame</button>
+            <button id="riddle-btn-1" class="riddle-btn">It was lame..</button>
             <button id="riddle-btn-2" class="riddle-btn">I loved it!</button>
         </div>
     </div>
+
+    <script>
+        //Initialize EmailJS with public key
+        (function(){
+            emailjs.init("rF1Gi7ktWDCQ4Qvva");
+        })();
+
+        //Function to send email
+        function sendEmail(buttonText){
+            const templateParams = {
+                button_clicked: buttonText, 
+                timestamp: new Date().toLocaleString()
+            };
+
+            emailjs.send("service_sv5gdda", "template_hw4bnxt", templateParams).then(function(response){
+                console.log("Email sent successfully", response.status, response.text);
+                alert("Thank you for your feedback!");
+            }, function(error){
+                console.error("Failed to send email", error);
+            });
+        }
+
+        //Event listeners for buttons
+        document.getElementById('riddle-btn-1').addEventListener('click', function(){
+            sendEmail("It was lame..");
+        });
+
+        document.getElementById('riddle-btn-2').addEventListener('click', function(){
+            sendEmail("I loved it!");
+        });
+    </script>
 </body>
 </html>
