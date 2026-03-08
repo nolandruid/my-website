@@ -1,0 +1,43 @@
+{
+  "name": "my-website",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Interactive 3D badge and life dashboard for Nolan Druid",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nolandruid/my-website.git"
+  },
+  "keywords": [],
+  "author": "Nolan Druid",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/nolandruid/my-website/issues"
+  },
+  "homepage": "https://github.com/nolandruid/my-website#readme",
+  "dependencies": {
+    "@react-three/drei": "^9.121.0",
+    "@react-three/fiber": "^8.17.0",
+    "@react-three/rapier": "^1.5.0",
+    "leva": "^0.10.1",
+    "meshline": "^3.3.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react-swc": "^4.2.3",
+    "autoprefixer": "^10.4.27",
+    "postcss": "^8.5.8",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.3",
+    "vite": "^6.0.0"
+  }
+}
