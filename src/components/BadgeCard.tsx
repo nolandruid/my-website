@@ -74,10 +74,10 @@ export function BadgeCard({ anchor }: BadgeCardProps) {
       >
         <planeGeometry args={[1.6, 2.25]} />
         <meshPhysicalMaterial
-          color="#334155"
-          clearcoat={0.4}
+          color="#fafbfe"
+          clearcoat={0.2}
           clearcoatRoughness={0.3}
-          metalness={0.2}
+          metalness={0.1}
           roughness={0.5}
           side={THREE.DoubleSide}
         />

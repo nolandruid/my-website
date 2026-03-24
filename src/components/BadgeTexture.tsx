@@ -38,7 +38,7 @@ export function BadgeTexture({ texture }: BadgeTextureProps) {
         Nolan
       </Text>
       <Text
-        position={[0, -0.35, 0.01]}
+        position={[0, -.5, 0.01]}
         fontSize={0.14}
         color="#e2e8f0"
         anchorX="center"

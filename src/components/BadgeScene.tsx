@@ -9,34 +9,85 @@ import {
   useRopeJoint,
   useSphericalJoint,
 } from '@react-three/rapier';
-import { Center, Resize, Text3D, useGLTF, useTexture } from '@react-three/drei';
+import { Text3D, useGLTF, useTexture } from '@react-three/drei';
 import { MeshLineGeometry, MeshLineMaterial } from 'meshline';
 import type { Mesh } from 'three';
 
 extend({ MeshLineGeometry, MeshLineMaterial });
+
+/** Immutable axis for setFromUnitVectors (cylinder cap normal = local +Y). */
+const STUD_CAP_UP = new THREE.Vector3(0, 1, 0);
 
 const TAG_GLB = '/tag.glb';
 const BADGE_IMAGE = '/badge-base.jpeg';
 const BAND_TEXTURE = '/band-dark.jpg';
 
 /**
- * Strap rivet — lives on the lanyard curve (not parented to the card).
- * curveT: 0 = j3/card end of spline, 1 = anchor; ~0.06–0.15 sits just above the clip.
- * Cylinder axis Y is aligned to strap tangent each frame (disc ⊥ strap).
- * Radii match prior look (was inside tag scale 2.25 → world ≈ 0.04×2.25).
+ * Scales rope length, joint spacing, rope rest length, ball colliders, stud, and strap line width.
+ * Badge GLB scale is unchanged (`scale={2.25}` on the tag group).
  */
-const STRAP_STUD = {
-  curveT: 0.1,
-  radius: 0.04 * 2.25,
-  height: 0.008 * 2.25,
-  segments: 32,
+const LANYARD_WORLD_SCALE = 0.5;
+
+/** World Y of the rope + card group — lower moves the whole badge down in the frame. */
+/** Too high and the strap spline crowds the metal clip; ~3.5 keeps lift without overlap. */
+const LANYARD_ANCHOR_GROUP_Y = 3.52;
+
+/**
+ * Card-end rope bead (j3) sits slightly below j1/j2 so the meshline drops away from the clip
+ * before curving toward the anchor (stops strap overlapping clip geometry).
+ */
+const ROPE_J3_Y_OFFSET = -0.14;
+
+/**
+ * Visual-only: first spline control is nudged from j3 toward j2 so the strap MeshLine
+ * stops at the hook ring instead of drawing through the GLB clip geometry. Physics still uses j3.
+ * 0 = use real j3; ~0.15–0.28 typical; too high detaches the line from the badge.
+ */
+const LANYARD_STRAP_END_TRIM = 0.2;
+
+/**
+ * Stretches horizontal spacing between joints (longer strap arc, less “tight” chain).
+ * 1 = minimum; raise toward ~1.5 for more length between anchor and card.
+ */
+const ROPE_SPAN_STRETCH = 1.42;
+
+/**
+ * Rope segment max length ÷ joint spacing — above ~2 adds slack so the lanyard can sag.
+ */
+const ROPE_LINK_SLACK = 2.45;
+
+/** Rope: fixed → j1 → j2 → j3 → card, even spacing on X. */
+const ROPE = {
+  step: 0.5 * LANYARD_WORLD_SCALE * ROPE_SPAN_STRETCH,
+  linkLength: 0.5 * LANYARD_WORLD_SCALE * ROPE_SPAN_STRETCH * ROPE_LINK_SLACK,
+  ballRadius: 0.1 * LANYARD_WORLD_SCALE,
 } as const;
 
 /**
- * MeshLine shader multiplies vUV by `repeat` (Vector2) — arrays are not applied correctly.
- * Tweak repeatU/repeatV to tile the strap pattern; lineWidth in screen pixels (sizeAttenuation=0).
+ * Strap rivet — lives on the lanyard curve (not parented to the card).
+ * curveT: 0 = j3/card end of spline, 1 = anchor; ~0.06–0.15 sits just above the clip.
+ * Cylinder axis Y is aligned to strap tangent each frame (disc ⊥ strap).
  */
-const BAND_LINE = { repeatU: -6, repeatV: 1, lineWidth: 1.5 } as const;
+const STRAP_STUD = {
+  curveT: 0.1,
+  radius: 0.04 * 2.25 * LANYARD_WORLD_SCALE,
+  /** Taller than real scale so the disc isn’t paper-thin when seen at a grazing angle */
+  height: 0.022 * 2.25 * LANYARD_WORLD_SCALE,
+  segments: 32,
+  /** Nudge along view normal so the stud clears the 2D mesh line (avoids z-fight / hiding). */
+  outset: 0.04 * LANYARD_WORLD_SCALE,
+} as const;
+
+/**
+ * MeshLine samples `vUV * repeat` — smaller |repeatU| stretches the texture along the strap
+ * (fewer tiles, less cramped weave). Negative repeatU mirrors; lineWidth is screen px (scales with lanyard).
+ */
+const BAND_LINE = {
+  /** Smaller |repeatU| = texture stretched more along the strap (good if the rope got longer). */
+  repeatU: -2.05,
+  repeatV: 1,
+  lineWidth: 2.1 * LANYARD_WORLD_SCALE,
+} as const;
 
 useGLTF.preload(TAG_GLB);
 useTexture.preload(BAND_TEXTURE);
@@ -107,35 +158,33 @@ const CARD_IMAGE_ALIGN_Y = 0.5;
 /**
  * Name + subtitle on the badge (Text3D). Edit here instead of hunting through JSX.
  *
+ * We intentionally do NOT use drei's <Center> or <Resize> here: they measure child bounds in
+ * useLayoutEffect. Text3D geometry is often empty on the first pass, so bbox-based centering
+ * scales differently every refresh → same numbers, shifting text. Explicit transforms only.
+ *
  * groupPosition — moves the whole block on the card (rigid-body local units).
  *   X+ → right, Y+ → up, Z+ → toward the default camera.
  * groupRotation — [rx, ry, rz] in radians; Y = π flips to face the camera with the card.
  *
- * alignTop / alignBottom — drei's <Center> vertical anchor (use one, or neither = vertically centered).
- * alignLeft / alignRight — horizontal anchor (one, or neither = horizontally centered).
- *
- * line1 / line2 — position [x,y,z] is spacing between lines in Text3D units (before innerScale).
+ * line1 / line2 — position [x,y,z] in Text3D units (before innerScale); Y separates the two lines.
  * innerScale — overall text size; negative X mirrors for correct front-face reading.
+ *   (Former drei's <Resize height> scaled bbox height to ~1 world unit; ~0.007 × (1/0.0021) ≈ 3.35.)
  */
 const BADGE_NAME = {
-  groupPosition: [-0.72, 0.2, 0.01] as const,
+  groupPosition: [-0.72, 0.2, 0.025] as const,
   groupRotation: [0, Math.PI, 0] as const,
-  alignTop: false,
-  alignBottom: true,
-  alignLeft: true,
-  alignRight: false,
-  innerScale: [-0.007, 0.007, 0.007] as const,
+  innerScale: [-3.35, 3.35, 3.35] as const,
   line1: {
     text: 'Nolan',
-    position: [0, -0.65, 0] as const,
-    size: .13,
+    position: [0, -.28, 0] as const,
+    size: .08,
     height: 0.03,
     color: '#f8fafc',
   },
   line2: {
     text: 'Druid',
-    position: [0, -.82, 0] as const,
-    size: 0.10,
+    position: [0, -.38, 0] as const,
+    size: 0.07,
     height: 0.025,
     color: '#e2e8f0',
   },
@@ -330,8 +379,8 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
   const studCurvePoint = useRef(new THREE.Vector3());
   const studCurveTangent = useRef(new THREE.Vector3());
   const studFaceNormal = useRef(new THREE.Vector3());
-  const studAxisY = useRef(new THREE.Vector3(0, 1, 0));
   const studFallbackAxis = useRef(new THREE.Vector3());
+  const cameraWorldPos = useRef(new THREE.Vector3());
   const fixed = useRef<RapierRigidBody | null>(null);
   const j1 = useRef<RapierRigidBody | null>(null);
   const j2 = useRef<RapierRigidBody | null>(null);
@@ -375,10 +424,11 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
   const j1Lerped = useRef(new THREE.Vector3());
   const j2Lerped = useRef(new THREE.Vector3());
   const j3Lerped = useRef(new THREE.Vector3());
+  const lanyardBandEnd = useRef(new THREE.Vector3());
 
-  useRopeJoint(fixed, j1, [[0, 0, 0], [0, 0, 0], 1]);
-  useRopeJoint(j1, j2, [[0, 0, 0], [0, 0, 0], 1]);
-  useRopeJoint(j2, j3, [[0, 0, 0], [0, 0, 0], 1]);
+  useRopeJoint(fixed, j1, [[0, 0, 0], [0, 0, 0], ROPE.linkLength]);
+  useRopeJoint(j1, j2, [[0, 0, 0], [0, 0, 0], ROPE.linkLength]);
+  useRopeJoint(j2, j3, [[0, 0, 0], [0, 0, 0], ROPE.linkLength]);
   useSphericalJoint(j3, card, [[0, 0, 0], [0, 1.45, 0]]);
 
   useEffect(() => {
@@ -410,7 +460,10 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
         const t = delta * (minSpeed + clampedDistance * (maxSpeed - minSpeed));
         lerped.lerp(pos, t);
       });
-      curve.points[0].copy(j3Lerped.current);
+      lanyardBandEnd.current
+        .copy(j3Lerped.current)
+        .lerp(j2Lerped.current, LANYARD_STRAP_END_TRIM);
+      curve.points[0].copy(lanyardBandEnd.current);
       curve.points[1].copy(j2Lerped.current);
       curve.points[2].copy(j1Lerped.current);
       curve.points[3].copy(fixed.current.translation());
@@ -431,9 +484,10 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
         t.normalize();
         studGrp.position.copy(studCurvePoint.current);
 
-        // Cap faces camera: default cylinder caps use +Y; align +Y with view dir (⊥ strap tangent).
+        // Cap faces camera: local +Y → toward camera, projected ⊥ strap (meshline is 2D — pull out a bit).
         const n = studFaceNormal.current;
-        n.copy(state.camera.position).sub(studCurvePoint.current).normalize();
+        state.camera.getWorldPosition(cameraWorldPos.current);
+        n.copy(cameraWorldPos.current).sub(studCurvePoint.current).normalize();
         n.addScaledVector(t, -n.dot(t));
         if (n.lengthSq() < 1e-6) {
           const f = studFallbackAxis.current;
@@ -445,7 +499,10 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
           }
         }
         n.normalize();
-        studGrp.quaternion.setFromUnitVectors(studAxisY.current, n);
+        if (Number.isFinite(n.x) && Number.isFinite(n.y) && Number.isFinite(n.z)) {
+          studGrp.quaternion.setFromUnitVectors(STUD_CAP_UP, n);
+        }
+        studGrp.position.addScaledVector(n, STRAP_STUD.outset);
       }
 
       ang.copy(card.current.angvel());
@@ -459,20 +516,20 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
 
   return (
     <>
-      <group position={[0, 4, 0]}>
+      <group position={[0, LANYARD_ANCHOR_GROUP_Y, 0]}>
         <RigidBody ref={fixed} {...segmentProps} type="fixed" />
-        <RigidBody ref={j1} position={[0.5, 0, 0]} {...segmentProps}>
-          <BallCollider args={[0.1]} />
+        <RigidBody ref={j1} position={[ROPE.step, 0, 0]} {...segmentProps}>
+          <BallCollider args={[ROPE.ballRadius]} />
         </RigidBody>
-        <RigidBody ref={j2} position={[1, 0, 0]} {...segmentProps}>
-          <BallCollider args={[0.1]} />
+        <RigidBody ref={j2} position={[ROPE.step * 2, 0, 0]} {...segmentProps}>
+          <BallCollider args={[ROPE.ballRadius]} />
         </RigidBody>
-        <RigidBody ref={j3} position={[1.5, 0, 0]} {...segmentProps}>
-          <BallCollider args={[0.1]} />
+        <RigidBody ref={j3} position={[ROPE.step * 3, ROPE_J3_Y_OFFSET, 0]} {...segmentProps}>
+          <BallCollider args={[ROPE.ballRadius]} />
         </RigidBody>
         <RigidBody
           ref={card}
-          position={[2, 0, 0]}
+          position={[ROPE.step * 4, 0, 0]}
           {...segmentProps}
           type={dragged ? 'kinematicPosition' : 'dynamic'}
         >
@@ -509,46 +566,53 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
                   side={THREE.DoubleSide}
                 />
               </mesh>
-              <mesh geometry={nodes.clip.geometry} material={materials.metal} material-roughness={0.3} />
-              <mesh geometry={nodes.clamp.geometry} material={materials.metal} />
+              {/* polygonOffset + renderOrder: ring draws after strap so it isn’t “shadowed” by meshline depth */}
+              <mesh
+                geometry={nodes.clip.geometry}
+                material={materials.metal}
+                material-roughness={0.3}
+                material-polygonOffset
+                material-polygonOffsetFactor={-4}
+                material-polygonOffsetUnits={-4}
+                renderOrder={2}
+              />
+              <mesh
+                geometry={nodes.clamp.geometry}
+                material={materials.metal}
+                material-polygonOffset
+                material-polygonOffsetFactor={-4}
+                material-polygonOffsetUnits={-4}
+                renderOrder={2}
+              />
             </group>
             <group
               position={[...BADGE_NAME.groupPosition]}
               rotation={[...BADGE_NAME.groupRotation] as [number, number, number]}
             >
-              <Center
-                top={BADGE_NAME.alignTop}
-                bottom={BADGE_NAME.alignBottom}
-                left={BADGE_NAME.alignLeft}
-                right={BADGE_NAME.alignRight}
-              >
-                <Resize height>
-                  <group scale={BADGE_NAME.innerScale}>
-                    <Text3D
-                      font="/helvetiker_regular.typeface.json"
-                      size={BADGE_NAME.line1.size}
-                      height={BADGE_NAME.line1.height}
-                      bevelEnabled={false}
-                      bevelSize={0}
-                      position={[...BADGE_NAME.line1.position]}
-                    >
-                      {BADGE_NAME.line1.text}
-                      <meshStandardMaterial color={BADGE_NAME.line1.color} side={THREE.DoubleSide} />
-                    </Text3D>
-                    <Text3D
-                      font="/helvetiker_regular.typeface.json"
-                      size={BADGE_NAME.line2.size}
-                      height={BADGE_NAME.line2.height}
-                      bevelEnabled={false}
-                      bevelSize={0}
-                      position={[...BADGE_NAME.line2.position]}
-                    >
-                      {BADGE_NAME.line2.text}
-                      <meshStandardMaterial color={BADGE_NAME.line2.color} side={THREE.DoubleSide} />
-                    </Text3D>
-                  </group>
-                </Resize>
-              </Center>
+              <group scale={BADGE_NAME.innerScale}>
+                <Text3D
+                  font="/helvetiker_regular.typeface.json"
+                  size={BADGE_NAME.line1.size}
+                  height={BADGE_NAME.line1.height}
+                  bevelEnabled={false}
+                  bevelSize={0}
+                  position={[...BADGE_NAME.line1.position]}
+                >
+                  {BADGE_NAME.line1.text}
+                  <meshStandardMaterial color={BADGE_NAME.line1.color} side={THREE.DoubleSide} />
+                </Text3D>
+                <Text3D
+                  font="/helvetiker_regular.typeface.json"
+                  size={BADGE_NAME.line2.size}
+                  height={BADGE_NAME.line2.height}
+                  bevelEnabled={false}
+                  bevelSize={0}
+                  position={[...BADGE_NAME.line2.position]}
+                >
+                  {BADGE_NAME.line2.text}
+                  <meshStandardMaterial color={BADGE_NAME.line2.color} side={THREE.DoubleSide} />
+                </Text3D>
+              </group>
             </group>
           </group>
         </RigidBody>
@@ -566,6 +630,9 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
             clearcoatRoughness={0.025}
             envMapIntensity={1.55}
             specularIntensity={1}
+            emissive="#334155"
+            emissiveIntensity={0.12}
+            side={THREE.DoubleSide}
           />
         </mesh>
       </group>
@@ -576,7 +643,8 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
         <meshLineMaterial
           ref={bandMatRef}
           color="white"
-          depthTest={false}
+          depthTest={true}
+          depthWrite={true}
           resolution={[width, height]}
           map={strapTex}
           repeat={bandRepeatVec}
