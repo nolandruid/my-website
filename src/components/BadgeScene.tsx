@@ -51,13 +51,8 @@ const LANYARD_STRAP_END_TRIM = 0.2;
  */
 const LANYARD_STRAP_TIP_SMOOTH = 18;
 
-/** CatmullRom samples along the strap; more points = gentler bends for meshline joints. */
-const LANYARD_CURVE_SAMPLES = 56;
-
-/**
- * Quantize interior polyline verts to cut noise (end caps skip snap — avoids ring-end popping).
- */
-const LANYARD_VERTEX_SNAP = 400;
+/** CatmullRom samples along the strap; more points = smaller per-segment angles = safer miters. */
+const LANYARD_CURVE_SAMPLES = 96;
 
 /**
  * Stretches horizontal spacing between joints (longer strap arc, less “tight” chain).
@@ -205,40 +200,27 @@ const BADGE_NAME = {
 } as const;
 
 /**
- * meshline's default vertex shader leaves miter limiting commented out and uses
- * `normalize(dir1 + dir2)`, which is unstable when the join angle is sharp — vertices
- * shoot to huge screen offsets (gray "cone" flicker near the hook). Patch once per material.
+ * meshline leaves its miter clamp commented out and normalizes dir1+dir2 without a zero-length
+ * guard — both cause huge miter spikes on sharp or near-antiparallel joins (the gray cone flicker).
+ * Two targeted single-line replaces are used so whitespace in the dist file doesn't matter.
  */
-const MESHLINE_MITER_BLOCK_BEFORE = `    else {
-      vec2 dir1 = normalize(currentP - prevP);
-      vec2 dir2 = normalize(nextP - currentP);
-      dir = normalize(dir1 + dir2);
-
-      vec2 perp = vec2(-dir1.y, dir1.x);
-      vec2 miter = vec2(-dir.y, dir.x);
-      //w = clamp(w / dot(miter, perp), 0., 4. * lineWidth * width);
-    }`;
-
-const MESHLINE_MITER_BLOCK_AFTER = `    else { // lanyard-miter-patch
-      vec2 dir1 = normalize(currentP - prevP);
-      vec2 dir2 = normalize(nextP - currentP);
-      vec2 bisect = dir1 + dir2;
-      if (length(bisect) < 0.001) {
-        dir = dir1;
-      } else {
-        dir = normalize(bisect);
-      }
-      vec2 perp = vec2(-dir1.y, dir1.x);
-      vec2 miter = vec2(-dir.y, dir.x);
-      float md = abs(dot(miter, perp));
-      w = clamp(w / max(md, 0.08), 0., 4. * lineWidth * width);
-    }`;
-
 function applyMeshLineMiterPatch(material: THREE.ShaderMaterial) {
-  if (!material.vertexShader || material.vertexShader.includes('lanyard-miter-patch')) return;
-  if (!material.vertexShader.includes(MESHLINE_MITER_BLOCK_BEFORE)) return;
-  material.vertexShader = material.vertexShader.replace(MESHLINE_MITER_BLOCK_BEFORE, MESHLINE_MITER_BLOCK_AFTER);
-  material.needsUpdate = true;
+  if (!material.vertexShader || material.vertexShader.includes('/*lanyardMiterPatch*/')) return;
+  let vs = material.vertexShader;
+  // 1. Guard the bisector normalize against near-zero input (antiparallel segments).
+  vs = vs.replace(
+    'dir = normalize(dir1 + dir2);',
+    'vec2 b_=dir1+dir2; dir=dot(b_,b_)<1e-6?dir1:normalize(b_); /*lanyardMiterPatch*/',
+  );
+  // 2. Restore the miter-width clamp (commented out in the stock shader).
+  vs = vs.replace(
+    '//w = clamp(w / dot(miter, perp), 0., 4. * lineWidth * width);',
+    'w = clamp(w / max(abs(dot(miter, perp)), 0.1), 0., 3. * lineWidth * width);',
+  );
+  if (vs !== material.vertexShader) {
+    material.vertexShader = vs;
+    material.needsUpdate = true;
+  }
 }
 
 function cardFaceUvAspect(geometry: THREE.BufferGeometry): number {
@@ -529,20 +511,8 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
       curve.points[2].copy(j1Lerped.current);
       curve.points[3].copy(fixed.current.translation());
       const points = curve.getPoints(LANYARD_CURVE_SAMPLES);
-      const nPts = points.length;
-      const s = LANYARD_VERTEX_SNAP;
-      const rounded = points.map((p, i) => {
-        if (i <= 2 || i >= nPts - 3) {
-          return p.clone();
-        }
-        return new THREE.Vector3(
-          Math.round(p.x * s) / s,
-          Math.round(p.y * s) / s,
-          Math.round(p.z * s) / s,
-        );
-      });
       const geometry = band.current?.geometry as { setPoints?: (pts: THREE.Vector3[]) => void } | undefined;
-      if (geometry?.setPoints) geometry.setPoints(rounded);
+      if (geometry?.setPoints) geometry.setPoints(points);
 
       const studGrp = strapStudGroupRef.current;
       if (studGrp) {
