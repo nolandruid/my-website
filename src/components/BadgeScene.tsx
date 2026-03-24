@@ -241,9 +241,6 @@ function applyMeshLineMiterPatch(material: THREE.ShaderMaterial) {
   material.needsUpdate = true;
 }
 
-/** Avoid a near-zero first edge; MeshLine miters go unstable when consecutive points coincide. */
-const LANYARD_MESHLINE_MIN_FIRST_SEG = 0.024 * LANYARD_WORLD_SCALE;
-
 function cardFaceUvAspect(geometry: THREE.BufferGeometry): number {
   const uvAttr = geometry.attributes.uv as THREE.BufferAttribute | undefined;
   if (!uvAttr) return 1;
@@ -482,7 +479,6 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
   const lanyardBandEnd = useRef(new THREE.Vector3());
   const smoothedStrapTip = useRef(new THREE.Vector3());
   const strapTipSmoothingReady = useRef(false);
-  const strapTangentScratch = useRef(new THREE.Vector3());
 
   useRopeJoint(fixed, j1, [[0, 0, 0], [0, 0, 0], ROPE.linkLength]);
   useRopeJoint(j1, j2, [[0, 0, 0], [0, 0, 0], ROPE.linkLength]);
@@ -545,17 +541,6 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
           Math.round(p.z * s) / s,
         );
       });
-      if (rounded.length >= 2) {
-        const d01 = rounded[0].distanceTo(rounded[1]);
-        if (d01 < LANYARD_MESHLINE_MIN_FIRST_SEG) {
-          curve.getTangentAt(0, strapTangentScratch.current);
-          strapTangentScratch.current.normalize();
-          rounded[0].addScaledVector(
-            strapTangentScratch.current,
-            -(LANYARD_MESHLINE_MIN_FIRST_SEG - d01),
-          );
-        }
-      }
       const geometry = band.current?.geometry as { setPoints?: (pts: THREE.Vector3[]) => void } | undefined;
       if (geometry?.setPoints) geometry.setPoints(rounded);
 
