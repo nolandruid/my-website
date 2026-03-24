@@ -46,6 +46,20 @@ const ROPE_J3_Y_OFFSET = -0.14;
 const LANYARD_STRAP_END_TRIM = 0.2;
 
 /**
+ * Exponential smoothing on the visual strap tip (follows j3→j2 trim target). Reduces MeshLine
+ * miter blow-up / “cone” flicker when the card moves — the line tip stops snapping every frame.
+ */
+const LANYARD_STRAP_TIP_SMOOTH = 18;
+
+/** CatmullRom samples along the strap; more points = gentler bends for meshline joints. */
+const LANYARD_CURVE_SAMPLES = 56;
+
+/**
+ * Quantize interior polyline verts to cut noise (end caps skip snap — avoids ring-end popping).
+ */
+const LANYARD_VERTEX_SNAP = 400;
+
+/**
  * Stretches horizontal spacing between joints (longer strap arc, less “tight” chain).
  * 1 = minimum; raise toward ~1.5 for more length between anchor and card.
  */
@@ -425,6 +439,8 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
   const j2Lerped = useRef(new THREE.Vector3());
   const j3Lerped = useRef(new THREE.Vector3());
   const lanyardBandEnd = useRef(new THREE.Vector3());
+  const smoothedStrapTip = useRef(new THREE.Vector3());
+  const strapTipSmoothingReady = useRef(false);
 
   useRopeJoint(fixed, j1, [[0, 0, 0], [0, 0, 0], ROPE.linkLength]);
   useRopeJoint(j1, j2, [[0, 0, 0], [0, 0, 0], ROPE.linkLength]);
@@ -463,16 +479,30 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
       lanyardBandEnd.current
         .copy(j3Lerped.current)
         .lerp(j2Lerped.current, LANYARD_STRAP_END_TRIM);
-      curve.points[0].copy(lanyardBandEnd.current);
+      if (!strapTipSmoothingReady.current) {
+        smoothedStrapTip.current.copy(lanyardBandEnd.current);
+        strapTipSmoothingReady.current = true;
+      } else {
+        const k = 1 - Math.exp(-LANYARD_STRAP_TIP_SMOOTH * delta);
+        smoothedStrapTip.current.lerp(lanyardBandEnd.current, k);
+      }
+      curve.points[0].copy(smoothedStrapTip.current);
       curve.points[1].copy(j2Lerped.current);
       curve.points[2].copy(j1Lerped.current);
       curve.points[3].copy(fixed.current.translation());
-      const points = curve.getPoints(32);
-      const rounded = points.map((p) => new THREE.Vector3(
-        Math.round(p.x * 200) / 200,
-        Math.round(p.y * 200) / 200,
-        Math.round(p.z * 200) / 200,
-      ));
+      const points = curve.getPoints(LANYARD_CURVE_SAMPLES);
+      const nPts = points.length;
+      const s = LANYARD_VERTEX_SNAP;
+      const rounded = points.map((p, i) => {
+        if (i <= 2 || i >= nPts - 3) {
+          return p.clone();
+        }
+        return new THREE.Vector3(
+          Math.round(p.x * s) / s,
+          Math.round(p.y * s) / s,
+          Math.round(p.z * s) / s,
+        );
+      });
       const geometry = band.current?.geometry as { setPoints?: (pts: THREE.Vector3[]) => void } | undefined;
       if (geometry?.setPoints) geometry.setPoints(rounded);
 
