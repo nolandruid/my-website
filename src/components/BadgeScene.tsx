@@ -9,12 +9,28 @@ import {
   useRopeJoint,
   useSphericalJoint,
 } from '@react-three/rapier';
-import { Center, Resize, Text3D, useTexture } from '@react-three/drei';
+import { Center, Resize, Text3D, useGLTF, useTexture } from '@react-three/drei';
 import { MeshLineGeometry, MeshLineMaterial } from 'meshline';
+import type { Mesh } from 'three';
 
 extend({ MeshLineGeometry, MeshLineMaterial });
 
+const TAG_GLB = '/tag.glb';
 const BADGE_IMAGE = '/badge-base.jpeg';
+
+useGLTF.preload(TAG_GLB);
+
+type TagGltf = {
+  nodes: {
+    card: Mesh;
+    clip: Mesh;
+    clamp: Mesh;
+  };
+  materials: {
+    base: THREE.MeshPhysicalMaterial;
+    metal: THREE.MeshStandardMaterial;
+  };
+};
 
 // Shared props for rope segments. Same for all segments except type overrides:
 // - type: 'dynamic' = simulated by physics; 'fixed' = anchor; 'kinematicPosition' = moved by code (dragging)
@@ -44,13 +60,15 @@ function useBadgeCanvasTexture(imageTexture: THREE.Texture): THREE.CanvasTexture
     if (!ctx) return null;
     ctx.drawImage(img, 0, 0, w, h);
     const tex = new THREE.CanvasTexture(canvas);
-    tex.flipY = true;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.flipY = false;
     tex.needsUpdate = true;
     return tex;
   }, [imageTexture]);
 }
 
 export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number; minSpeed?: number }) {
+  const { nodes, materials } = useGLTF(TAG_GLB) as unknown as TagGltf;
   const badgeImage = useTexture(BADGE_IMAGE) as THREE.Texture;
   const cardTexture = useBadgeCanvasTexture(badgeImage);
   const band = useRef<THREE.Mesh>(null);
@@ -182,19 +200,24 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
               }
             }}
           >
-            <mesh renderOrder={1}>
-              <planeGeometry args={[0.8 * 2, 1.125 * 2]} />
-              <meshPhysicalMaterial
-                map={cardTexture ?? undefined}
-                color={cardTexture ? undefined : '#64748b'}
-                clearcoat={1}
-                clearcoatRoughness={0.15}
-                roughness={0.3}
-                metalness={0.5}
-                side={THREE.DoubleSide}
-                envMapIntensity={1}
-              />
-            </mesh>
+            {/* Vercel tag.glb: inner offset + scale align clip hole with spherical joint (same as official demo). */}
+            <group position={[0, -1.2, 0]} scale={2.25}>
+              <mesh geometry={nodes.card.geometry} renderOrder={1}>
+                <meshPhysicalMaterial
+                  color="#ffffff"
+                  map={cardTexture ?? materials.base.map}
+                  map-anisotropy={16}
+                  metalness={0}
+                  roughness={0.45}
+                  clearcoat={0.35}
+                  clearcoatRoughness={0.25}
+                  envMapIntensity={1}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
+              <mesh geometry={nodes.clip.geometry} material={materials.metal} material-roughness={0.3} />
+              <mesh geometry={nodes.clamp.geometry} material={materials.metal} />
+            </group>
             <group position={[-0.72, 0.2, 0.01]} rotation={[0, Math.PI, 0]}>
               <Center bottom left>
                 <Resize height>
