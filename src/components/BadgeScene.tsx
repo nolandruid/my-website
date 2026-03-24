@@ -212,15 +212,27 @@ function applyMeshLineMiterPatch(material: THREE.ShaderMaterial) {
     'dir = normalize(dir1 + dir2);',
     'vec2 b_=dir1+dir2; dir=dot(b_,b_)<1e-6?dir1:normalize(b_); /*lanyardMiterPatch*/',
   );
-  // 2. Restore the miter-width clamp (commented out in the stock shader).
+  // 2. Restore the miter-width clamp (commented out in the stock shader) with a tighter cap.
   vs = vs.replace(
     '//w = clamp(w / dot(miter, perp), 0., 4. * lineWidth * width);',
-    'w = clamp(w / max(abs(dot(miter, perp)), 0.1), 0., 3. * lineWidth * width);',
+    'w = clamp(w / max(abs(dot(miter, perp)), 0.1), 0., 2. * lineWidth * width);',
   );
   if (vs !== material.vertexShader) {
     material.vertexShader = vs;
     material.needsUpdate = true;
   }
+}
+
+/**
+ * Fraction of the strap (from the ring/j3 end) over which MeshLine width tapers from 0→1.
+ * The ring GLB covers this invisible zone, so no gap is visible. Any miter artifact inside
+ * this zone is rendered at near-zero width, making it visually harmless.
+ */
+const STRAP_TIP_TAPER = 0.15;
+
+/** widthCallback for MeshLine — p=0 is the ring end, p=1 is the anchor. */
+function strapWidthTaper(p: number): number {
+  return p < STRAP_TIP_TAPER ? p / STRAP_TIP_TAPER : 1.0;
 }
 
 function cardFaceUvAspect(geometry: THREE.BufferGeometry): number {
@@ -449,7 +461,9 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
         new THREE.Vector3(),
       ]),
   );
-  (curve as THREE.CatmullRomCurve3 & { curveType?: string }).curveType = 'chordal';
+  // 'centripetal' guarantees no cusps or self-intersections between control points,
+  // making it the safest type for dynamically-driven strap geometry.
+  (curve as THREE.CatmullRomCurve3 & { curveType?: string }).curveType = 'centripetal';
 
   const [dragged, setDragged] = useState<THREE.Vector3 | null>(null);
   const [hovered, setHovered] = useState(false);
@@ -511,8 +525,10 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
       curve.points[2].copy(j1Lerped.current);
       curve.points[3].copy(fixed.current.translation());
       const points = curve.getPoints(LANYARD_CURVE_SAMPLES);
-      const geometry = band.current?.geometry as { setPoints?: (pts: THREE.Vector3[]) => void } | undefined;
-      if (geometry?.setPoints) geometry.setPoints(points);
+      const geometry = band.current?.geometry as {
+        setPoints?: (pts: THREE.Vector3[], widthCb?: (p: number) => number) => void;
+      } | undefined;
+      if (geometry?.setPoints) geometry.setPoints(points, strapWidthTaper);
 
       const studGrp = strapStudGroupRef.current;
       if (studGrp) {
