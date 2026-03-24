@@ -204,6 +204,46 @@ const BADGE_NAME = {
   },
 } as const;
 
+/**
+ * meshline's default vertex shader leaves miter limiting commented out and uses
+ * `normalize(dir1 + dir2)`, which is unstable when the join angle is sharp — vertices
+ * shoot to huge screen offsets (gray "cone" flicker near the hook). Patch once per material.
+ */
+const MESHLINE_MITER_BLOCK_BEFORE = `    else {
+      vec2 dir1 = normalize(currentP - prevP);
+      vec2 dir2 = normalize(nextP - currentP);
+      dir = normalize(dir1 + dir2);
+
+      vec2 perp = vec2(-dir1.y, dir1.x);
+      vec2 miter = vec2(-dir.y, dir.x);
+      //w = clamp(w / dot(miter, perp), 0., 4. * lineWidth * width);
+    }`;
+
+const MESHLINE_MITER_BLOCK_AFTER = `    else { // lanyard-miter-patch
+      vec2 dir1 = normalize(currentP - prevP);
+      vec2 dir2 = normalize(nextP - currentP);
+      vec2 bisect = dir1 + dir2;
+      if (length(bisect) < 0.001) {
+        dir = dir1;
+      } else {
+        dir = normalize(bisect);
+      }
+      vec2 perp = vec2(-dir1.y, dir1.x);
+      vec2 miter = vec2(-dir.y, dir.x);
+      float md = abs(dot(miter, perp));
+      w = clamp(w / max(md, 0.08), 0., 4. * lineWidth * width);
+    }`;
+
+function applyMeshLineMiterPatch(material: THREE.ShaderMaterial) {
+  if (!material.vertexShader || material.vertexShader.includes('lanyard-miter-patch')) return;
+  if (!material.vertexShader.includes(MESHLINE_MITER_BLOCK_BEFORE)) return;
+  material.vertexShader = material.vertexShader.replace(MESHLINE_MITER_BLOCK_BEFORE, MESHLINE_MITER_BLOCK_AFTER);
+  material.needsUpdate = true;
+}
+
+/** Avoid a near-zero first edge; MeshLine miters go unstable when consecutive points coincide. */
+const LANYARD_MESHLINE_MIN_FIRST_SEG = 0.024 * LANYARD_WORLD_SCALE;
+
 function cardFaceUvAspect(geometry: THREE.BufferGeometry): number {
   const uvAttr = geometry.attributes.uv as THREE.BufferAttribute | undefined;
   if (!uvAttr) return 1;
@@ -413,6 +453,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
   useLayoutEffect(() => {
     const m = bandMatRef.current;
     if (!m?.uniforms?.useMap) return;
+    applyMeshLineMiterPatch(m);
     m.uniforms.useMap.value = 1;
     m.uniforms.map.value = strapTex;
     m.uniforms.repeat.value.copy(bandRepeatVec);
@@ -441,6 +482,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
   const lanyardBandEnd = useRef(new THREE.Vector3());
   const smoothedStrapTip = useRef(new THREE.Vector3());
   const strapTipSmoothingReady = useRef(false);
+  const strapTangentScratch = useRef(new THREE.Vector3());
 
   useRopeJoint(fixed, j1, [[0, 0, 0], [0, 0, 0], ROPE.linkLength]);
   useRopeJoint(j1, j2, [[0, 0, 0], [0, 0, 0], ROPE.linkLength]);
@@ -503,6 +545,17 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
           Math.round(p.z * s) / s,
         );
       });
+      if (rounded.length >= 2) {
+        const d01 = rounded[0].distanceTo(rounded[1]);
+        if (d01 < LANYARD_MESHLINE_MIN_FIRST_SEG) {
+          curve.getTangentAt(0, strapTangentScratch.current);
+          strapTangentScratch.current.normalize();
+          rounded[0].addScaledVector(
+            strapTangentScratch.current,
+            -(LANYARD_MESHLINE_MIN_FIRST_SEG - d01),
+          );
+        }
+      }
       const geometry = band.current?.geometry as { setPoints?: (pts: THREE.Vector3[]) => void } | undefined;
       if (geometry?.setPoints) geometry.setPoints(rounded);
 
