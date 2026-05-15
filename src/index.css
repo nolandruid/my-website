@@ -24,8 +24,8 @@ body {
 
 /* Individual tile */
 .tile {
-  width: 34px;
-  height: 48px;
+  width: 40px;
+  height: 64px;
   perspective: 500px;
   background: #111;
   border-radius: 3px;
@@ -68,7 +68,7 @@ body {
 .tile-front span,
 .tile-back span {
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 22px;
+  font-size: 28px;
   font-weight: 700;
   color: #f0f0f0;
   text-transform: uppercase;

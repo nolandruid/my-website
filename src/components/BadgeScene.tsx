@@ -50,7 +50,14 @@ function useBadgeCanvasTexture(imageTexture: THREE.Texture): THREE.CanvasTexture
   }, [imageTexture]);
 }
 
-export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number; minSpeed?: number }) {
+interface BadgeSceneProps {
+  maxSpeed?: number;
+  minSpeed?: number;
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+}
+
+export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEnd }: BadgeSceneProps) {
   const badgeImage = useTexture(BADGE_IMAGE) as THREE.Texture;
   const cardTexture = useBadgeCanvasTexture(badgeImage);
   const band = useRef<THREE.Mesh>(null);
@@ -172,6 +179,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
             onPointerUp={(e) => {
               (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
               setDragged(null);
+              onDragEnd?.();
             }}
             onPointerDown={(e) => {
               (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
@@ -179,6 +187,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
                 setDragged(
                   new THREE.Vector3().copy(e.point).sub(vec.copy(card.current.translation())),
                 );
+                onDragStart?.();
               }
             }}
           >

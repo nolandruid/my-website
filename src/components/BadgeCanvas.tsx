@@ -5,7 +5,12 @@ import { Suspense } from 'react';
 import { useControls } from 'leva';
 import { BadgeScene } from './BadgeScene';
 
-export function BadgeCanvas() {
+interface BadgeCanvasProps {
+  onDragStart?: () => void;
+  onDragEnd?: () => void;
+}
+
+export function BadgeCanvas({ onDragStart, onDragEnd }: BadgeCanvasProps) {
   const { debug } = useControls({ debug: false });
 
   return (
@@ -17,7 +22,7 @@ export function BadgeCanvas() {
       <ambientLight intensity={Math.PI} />
       <Suspense fallback={null}>
         <Physics debug={debug} gravity={[0, -40, 0]} timeStep={1 / 60} interpolate>
-          <BadgeScene />
+          <BadgeScene onDragStart={onDragStart} onDragEnd={onDragEnd} />
         </Physics>
       </Suspense>
       <Environment background blur={0.75}>

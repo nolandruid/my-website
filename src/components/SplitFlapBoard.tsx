@@ -13,10 +13,11 @@ const SCRAMBLE_COLORS = [
   '#00AAFF', '#00FFCC', '#AA00FF',
   '#FF2D00', '#FFCC00', '#FFFFFF',
 ];
-const SCRAMBLE_INTERVAL_MS = 70;
-const MAX_SCRAMBLES = 11;
-const STAGGER_MS = 22;
-const SETTLE_MS = 150;
+const SCRAMBLE_INTERVAL_MS = 110;  // slower — visible scramble
+const MAX_SCRAMBLES = 13;
+const COL_STAGGER_MS = 25;         // delay between columns within a row
+const ROW_STAGGER_MS = 1600;       // each row starts this many ms after the previous
+const SETTLE_MS = 180;
 const CYCLE_MS = 15000;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -55,16 +56,14 @@ function formatGrid(quote: string): string[][] {
 // ── component ─────────────────────────────────────────────────────────────────
 
 export function SplitFlapBoard() {
-  // refs[row][col] → the .tile-front element
   const frontRefs = useRef<(HTMLDivElement | null)[][]>(
     Array.from({ length: ROWS }, () => Array(COLS).fill(null)),
   );
-  // innerRefs[row][col] → the .tile-inner element (for settle animation)
   const innerRefs = useRef<(HTMLDivElement | null)[][]>(
     Array.from({ length: ROWS }, () => Array(COLS).fill(null)),
   );
-  // Current displayed grid (so we only animate changed tiles)
   const displayedGrid = useRef<string[][]>(formatGrid(QUOTES[0]));
+  const isTransitioning = useRef(false);
 
   const [quoteIdx, setQuoteIdx] = useState(0);
   const [soundOn, setSoundOn] = useState(true);
@@ -72,16 +71,15 @@ export function SplitFlapBoard() {
   soundRef.current = soundOn;
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  // Initialise audio element once
   useEffect(() => {
     const audio = new Audio('/flap.m4a');
     audio.preload = 'auto';
     audioRef.current = audio;
   }, []);
 
+  // Animate a single tile: scramble then settle on targetChar
   const animateTile = useCallback(
-    (row: number, col: number, targetChar: string, delay: number) => {
+    (row: number, col: number, targetChar: string, delayMs: number) => {
       setTimeout(() => {
         const front = frontRefs.current[row]?.[col];
         const inner = innerRefs.current[row]?.[col];
@@ -94,11 +92,8 @@ export function SplitFlapBoard() {
         const id = setInterval(() => {
           const randChar = CHARSET[Math.floor(Math.random() * CHARSET.length)];
           span.textContent = randChar === ' ' ? '' : randChar;
-          front.style.backgroundColor =
-            SCRAMBLE_COLORS[count % SCRAMBLE_COLORS.length];
-
-          // Adjust text colour for legibility on light backgrounds
           const bg = SCRAMBLE_COLORS[count % SCRAMBLE_COLORS.length];
+          front.style.backgroundColor = bg;
           span.style.color = bg === '#FFFFFF' || bg === '#FFCC00' ? '#111' : '';
 
           count++;
@@ -108,66 +103,84 @@ export function SplitFlapBoard() {
             span.style.color = '';
             span.textContent = targetChar === ' ' ? '' : targetChar;
 
-            // Settle bounce
             inner.style.transition = `transform ${SETTLE_MS}ms ease-out`;
-            inner.style.transform = 'perspective(400px) rotateX(-8deg)';
+            inner.style.transform = 'perspective(500px) rotateX(-8deg)';
             setTimeout(() => {
               inner.style.transform = '';
               setTimeout(() => (inner.style.transition = ''), SETTLE_MS);
             }, SETTLE_MS);
           }
         }, SCRAMBLE_INTERVAL_MS);
-      }, delay);
+      }, delayMs);
     },
     [],
   );
 
   const transitionTo = useCallback(
     (nextIdx: number) => {
+      if (isTransitioning.current) return;
+      isTransitioning.current = true;
+
       const nextGrid = formatGrid(QUOTES[nextIdx]);
       const current = displayedGrid.current;
 
-      // Play audio once for the whole transition
+      // Play audio once
       if (soundRef.current && audioRef.current) {
         audioRef.current.currentTime = 0;
         audioRef.current.play().catch(() => {});
       }
 
-      // Animate only tiles that change
+      // Animate rows one after another, columns staggered within each row
       nextGrid.forEach((rowChars, r) => {
         rowChars.forEach((char, c) => {
           if (char !== current[r]?.[c]) {
-            animateTile(r, c, char, c * STAGGER_MS + r * 3);
+            const delay = r * ROW_STAGGER_MS + c * COL_STAGGER_MS;
+            animateTile(r, c, char, delay);
           }
         });
       });
 
       displayedGrid.current = nextGrid;
       setQuoteIdx(nextIdx);
+
+      // Unlock after all rows finish
+      const totalDuration =
+        ROWS * ROW_STAGGER_MS + COLS * COL_STAGGER_MS + MAX_SCRAMBLES * SCRAMBLE_INTERVAL_MS + 500;
+      setTimeout(() => {
+        isTransitioning.current = false;
+      }, totalDuration);
     },
     [animateTile],
   );
 
+  // Auto-cycle
   useEffect(() => {
     const id = setInterval(() => {
       setQuoteIdx((idx) => {
         const next = (idx + 1) % QUOTES.length;
         transitionTo(next);
-        return idx; // actual state update happens inside transitionTo → setQuoteIdx
+        return idx;
       });
     }, CYCLE_MS);
     return () => clearInterval(id);
   }, [transitionTo]);
 
-  // Render the initial grid once (no re-render on animation)
+  const handleNext = useCallback(() => {
+    setQuoteIdx((idx) => {
+      const next = (idx + 1) % QUOTES.length;
+      transitionTo(next);
+      return idx;
+    });
+  }, [transitionTo]);
+
   const initialGrid = formatGrid(QUOTES[0]);
 
   return (
-    <div className="flex flex-col items-center gap-4 select-none">
+    <div className="flex flex-col items-center gap-5 select-none">
       {/* Board */}
       <div
-        className="split-flap-board px-3 py-3 rounded-lg"
-        style={{ display: 'grid', gridTemplateRows: `repeat(${ROWS}, 1fr)`, gap: '5px' }}
+        className="split-flap-board px-4 py-4 rounded-lg"
+        style={{ display: 'grid', gridTemplateRows: `repeat(${ROWS}, 1fr)`, gap: '6px' }}
       >
         {Array.from({ length: ROWS }, (_, r) => (
           <div key={r} style={{ display: 'flex', gap: '5px' }}>
@@ -196,14 +209,25 @@ export function SplitFlapBoard() {
         ))}
       </div>
 
-      {/* Sound toggle */}
-      <button
-        onClick={() => setSoundOn((s) => !s)}
-        className="text-xs text-neutral-600 hover:text-neutral-300 transition-colors"
-        title={soundOn ? 'Mute' : 'Unmute'}
-      >
-        {soundOn ? '🔊 sound on' : '🔇 muted'}
-      </button>
+      {/* Controls */}
+      <div className="flex items-center gap-6">
+        <button
+          onClick={handleNext}
+          className="px-4 py-1.5 text-sm font-mono font-semibold tracking-widest
+                     border border-neutral-700 text-neutral-300
+                     hover:border-neutral-400 hover:text-white
+                     transition-colors duration-150 rounded"
+        >
+          NEXT →
+        </button>
+        <button
+          onClick={() => setSoundOn((s) => !s)}
+          className="text-sm text-neutral-600 hover:text-neutral-300 transition-colors"
+          title={soundOn ? 'Mute' : 'Unmute'}
+        >
+          {soundOn ? '🔊' : '🔇'}
+        </button>
+      </div>
     </div>
   );
 }
