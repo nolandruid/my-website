@@ -96,9 +96,9 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
   const j2Lerped = useRef(new THREE.Vector3());
   const j3Lerped = useRef(new THREE.Vector3());
 
-  useRopeJoint(fixed, j1, [[0, 0, 0], [0, 0, 0], 1]);
-  useRopeJoint(j1, j2, [[0, 0, 0], [0, 0, 0], 1]);
-  useRopeJoint(j2, j3, [[0, 0, 0], [0, 0, 0], 1]);
+  useRopeJoint(fixed, j1, [[0, 0, 0], [0, 0, 0], 1.3]);
+  useRopeJoint(j1, j2, [[0, 0, 0], [0, 0, 0], 1.3]);
+  useRopeJoint(j2, j3, [[0, 0, 0], [0, 0, 0], 1.3]);
   useSphericalJoint(j3, card, [[0, 0, 0], [0, 1.45, 0]]);
 
   useEffect(() => {
@@ -154,20 +154,20 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
 
   return (
     <>
-      <group position={[-3, 4.7, 0]}>
+      <group position={[-3, 5.5, 0]}>
         <RigidBody ref={fixed} {...segmentProps} type="fixed" />
-        <RigidBody ref={j1} position={[0.5, 0, 0]} {...segmentProps}>
+        <RigidBody ref={j1} position={[0, -1.3, 0]} {...segmentProps}>
           <BallCollider args={[0.1]} />
         </RigidBody>
-        <RigidBody ref={j2} position={[1, 0, 0]} {...segmentProps}>
+        <RigidBody ref={j2} position={[0, -2.6, 0]} {...segmentProps}>
           <BallCollider args={[0.1]} />
         </RigidBody>
-        <RigidBody ref={j3} position={[1.5, 0, 0]} {...segmentProps}>
+        <RigidBody ref={j3} position={[0, -3.9, 0]} {...segmentProps}>
           <BallCollider args={[0.1]} />
         </RigidBody>
         <RigidBody
           ref={card}
-          position={[2, 0, 0]}
+          position={[0, -5.35, 0]}
           {...segmentProps}
           type={dragged ? 'kinematicPosition' : 'dynamic'}
         >

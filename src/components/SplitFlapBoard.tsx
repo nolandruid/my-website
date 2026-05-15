@@ -16,7 +16,7 @@ const SCRAMBLE_COLORS = [
 const SCRAMBLE_INTERVAL_MS = 110;  // slower — visible scramble
 const MAX_SCRAMBLES = 13;
 const COL_STAGGER_MS = 25;         // delay between columns within a row
-const ROW_STAGGER_MS = 1600;       // each row starts this many ms after the previous
+const ROW_STAGGER_MS = 750;        // each row starts ~halfway through the previous row's scramble
 const SETTLE_MS = 180;
 const CYCLE_MS = 15000;
 
