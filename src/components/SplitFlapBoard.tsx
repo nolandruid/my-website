@@ -22,6 +22,28 @@ const CYCLE_MS = 15000;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function fitsBoard(quote: string): boolean {
+  const words = quote.split(' ');
+  let lines = 0;
+  let cur = '';
+  for (const word of words) {
+    if (word.length > COLS) return false;
+    if (!cur) { cur = word; }
+    else if (cur.length + 1 + word.length <= COLS) { cur += ' ' + word; }
+    else { lines++; cur = word; if (lines >= ROWS) return false; }
+  }
+  return true;
+}
+
 function formatGrid(quote: string): string[][] {
   const words = quote.split(' ');
   const rawLines: string[] = [];
@@ -62,7 +84,24 @@ export function SplitFlapBoard() {
   const innerRefs = useRef<(HTMLDivElement | null)[][]>(
     Array.from({ length: ROWS }, () => Array(COLS).fill(null)),
   );
-  const displayedGrid = useRef<string[][]>(formatGrid(QUOTES[0]));
+  const [pool, setPool] = useState<string[]>(shuffle(QUOTES));
+  const poolRef = useRef(pool);
+  poolRef.current = pool;
+
+  // Fetch fresh quotes from type.fit, filter to ones that fit the board, merge + reshuffle
+  useEffect(() => {
+    fetch('https://type.fit/api/quotes')
+      .then((r) => r.json())
+      .then((data: Array<{ text: string }>) => {
+        const fetched = data
+          .map((q) => q.text.toUpperCase().replace(/\s+/g, ' ').trim())
+          .filter((q) => fitsBoard(q) && q.length > 8);
+        setPool(shuffle([...QUOTES, ...fetched]));
+      })
+      .catch(() => {});
+  }, []);
+
+  const displayedGrid = useRef<string[][]>(formatGrid(pool[0]));
   const isTransitioning = useRef(false);
   const currentIdxRef = useRef(0);
 
@@ -122,7 +161,7 @@ export function SplitFlapBoard() {
       if (isTransitioning.current) return;
       isTransitioning.current = true;
 
-      const nextGrid = formatGrid(QUOTES[nextIdx]);
+      const nextGrid = formatGrid(poolRef.current[nextIdx] ?? poolRef.current[0]);
       const current = displayedGrid.current;
 
       // Animate rows one after another; play audio at the moment each row starts
@@ -161,18 +200,18 @@ export function SplitFlapBoard() {
   // Auto-cycle
   useEffect(() => {
     const id = setInterval(() => {
-      const next = (currentIdxRef.current + 1) % QUOTES.length;
+      const next = (currentIdxRef.current + 1) % poolRef.current.length;
       transitionTo(next);
     }, CYCLE_MS);
     return () => clearInterval(id);
   }, [transitionTo]);
 
   const handleNext = useCallback(() => {
-    const next = (currentIdxRef.current + 1) % QUOTES.length;
+    const next = (currentIdxRef.current + 1) % poolRef.current.length;
     transitionTo(next);
   }, [transitionTo]);
 
-  const initialGrid = formatGrid(QUOTES[0]);
+  const initialGrid = formatGrid(pool[0]);
 
   return (
     <div className="flex flex-col items-center gap-5 select-none">
