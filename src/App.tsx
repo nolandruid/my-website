@@ -5,22 +5,17 @@ import { ErrorBoundary } from './ErrorBoundary';
 
 function App() {
   return (
-    <div className="fixed inset-0 w-full h-full bg-[#111] overflow-hidden">
-      {/* Full-screen Three.js canvas — badge anchor shifted left internally */}
-      <ErrorBoundary inline>
-        <BadgeCanvas />
-      </ErrorBoundary>
-
-      {/* HTML overlay — right half: split-flap board */}
-      <div className="absolute inset-0 pointer-events-none flex">
-        <div className="flex-1" /> {/* left half: let Three.js handle mouse events */}
-        <div className="flex-1 flex items-center justify-center pointer-events-auto">
-          <SplitFlapBoard />
-        </div>
+    <div className="fixed inset-0 w-full h-full bg-[#111] overflow-hidden flex">
+      {/* Left half — Three.js canvas only. Badge stays here; no z-index conflict with HTML. */}
+      <div className="w-1/2 h-full">
+        <ErrorBoundary inline>
+          <BadgeCanvas />
+        </ErrorBoundary>
       </div>
 
-      {/* Social links — bottom centre */}
-      <div className="absolute bottom-8 left-0 right-0 flex justify-center pointer-events-auto">
+      {/* Right half — departure board + social links */}
+      <div className="w-1/2 h-full flex flex-col items-center justify-center gap-8">
+        <SplitFlapBoard />
         <SocialLinks />
       </div>
     </div>

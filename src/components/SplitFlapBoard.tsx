@@ -7,7 +7,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { QUOTES } from '../data/quotes';
 
 const ROWS = 4;
-const COLS = 22;
+const COLS = 18;
 const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,-!?\' ';
 const SCRAMBLE_COLORS = [
   '#00AAFF', '#00FFCC', '#AA00FF',
@@ -17,7 +17,7 @@ const SCRAMBLE_INTERVAL_MS = 70;
 const MAX_SCRAMBLES = 11;
 const STAGGER_MS = 22;
 const SETTLE_MS = 150;
-const CYCLE_MS = 9000;
+const CYCLE_MS = 15000;
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -167,10 +167,10 @@ export function SplitFlapBoard() {
       {/* Board */}
       <div
         className="split-flap-board px-3 py-3 rounded-lg"
-        style={{ display: 'grid', gridTemplateRows: `repeat(${ROWS}, 1fr)`, gap: '3px' }}
+        style={{ display: 'grid', gridTemplateRows: `repeat(${ROWS}, 1fr)`, gap: '5px' }}
       >
         {Array.from({ length: ROWS }, (_, r) => (
-          <div key={r} style={{ display: 'flex', gap: '3px' }}>
+          <div key={r} style={{ display: 'flex', gap: '5px' }}>
             {Array.from({ length: COLS }, (_, c) => {
               const ch = initialGrid[r][c];
               return (
