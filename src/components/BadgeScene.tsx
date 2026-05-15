@@ -147,7 +147,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10 }: { maxSpeed?: number
 
   return (
     <>
-      <group position={[0, 4, 0]}>
+      <group position={[-2, 4, 0]}>
         <RigidBody ref={fixed} {...segmentProps} type="fixed" />
         <RigidBody ref={j1} position={[0.5, 0, 0]} {...segmentProps}>
           <BallCollider args={[0.1]} />

@@ -15,3 +15,37 @@ body {
   color: #1e293b;
 }
 
+/* ── Split-flap board ── */
+.split-flap-board {
+  background: #0a0a0a;
+  border: 1px solid #222;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255,255,255,0.04);
+  min-width: 260px;
+}
+
+.split-flap-char {
+  display: inline-block;
+  font-family: 'Courier New', 'Lucida Console', monospace;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #f59e0b;          /* amber — classic departure board */
+  text-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  transform-origin: center;
+  will-change: transform;
+}
+
+@keyframes split-flap {
+  0%   { transform: perspective(300px) rotateX(0deg);    opacity: 1; }
+  40%  { transform: perspective(300px) rotateX(-90deg);  opacity: 0; }
+  60%  { transform: perspective(300px) rotateX(90deg);   opacity: 0; }
+  100% { transform: perspective(300px) rotateX(0deg);    opacity: 1; }
+}
+
+.split-flap-animate {
+  animation-name: split-flap;
+  animation-duration: 260ms;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: both;
+}
+
