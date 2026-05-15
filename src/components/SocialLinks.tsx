@@ -39,7 +39,7 @@ const LINKS: LinkItem[] = [
     icon: <GitHubIcon />,
   },
   {
-    href: 'https://linkedin.com/in/nolandruid',
+    href: 'https://www.linkedin.com/in/nolan-druid-922068326/',
     label: 'LinkedIn',
     icon: <LinkedInIcon />,
   },
