@@ -124,18 +124,21 @@ export function SplitFlapBoard() {
       const nextGrid = formatGrid(QUOTES[nextIdx]);
       const current = displayedGrid.current;
 
-      // Play audio once
-      if (soundRef.current && audioRef.current) {
-        audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(() => {});
-      }
-
-      // Animate rows one after another, columns staggered within each row
+      // Animate rows one after another; play audio at the moment each row starts
       nextGrid.forEach((rowChars, r) => {
+        const rowDelay = r * ROW_STAGGER_MS;
+        const rowHasChange = rowChars.some((char, c) => char !== current[r]?.[c]);
+        if (rowHasChange) {
+          setTimeout(() => {
+            if (soundRef.current && audioRef.current) {
+              audioRef.current.currentTime = 0;
+              audioRef.current.play().catch(() => {});
+            }
+          }, rowDelay);
+        }
         rowChars.forEach((char, c) => {
           if (char !== current[r]?.[c]) {
-            const delay = r * ROW_STAGGER_MS + c * COL_STAGGER_MS;
-            animateTile(r, c, char, delay);
+            animateTile(r, c, char, rowDelay + c * COL_STAGGER_MS);
           }
         });
       });
