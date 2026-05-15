@@ -64,6 +64,7 @@ export function SplitFlapBoard() {
   );
   const displayedGrid = useRef<string[][]>(formatGrid(QUOTES[0]));
   const isTransitioning = useRef(false);
+  const currentIdxRef = useRef(0);
 
   const [quoteIdx, setQuoteIdx] = useState(0);
   const [soundOn, setSoundOn] = useState(true);
@@ -144,6 +145,7 @@ export function SplitFlapBoard() {
       });
 
       displayedGrid.current = nextGrid;
+      currentIdxRef.current = nextIdx;
       setQuoteIdx(nextIdx);
 
       // Unlock after all rows finish
@@ -159,21 +161,15 @@ export function SplitFlapBoard() {
   // Auto-cycle
   useEffect(() => {
     const id = setInterval(() => {
-      setQuoteIdx((idx) => {
-        const next = (idx + 1) % QUOTES.length;
-        transitionTo(next);
-        return idx;
-      });
+      const next = (currentIdxRef.current + 1) % QUOTES.length;
+      transitionTo(next);
     }, CYCLE_MS);
     return () => clearInterval(id);
   }, [transitionTo]);
 
   const handleNext = useCallback(() => {
-    setQuoteIdx((idx) => {
-      const next = (idx + 1) % QUOTES.length;
-      transitionTo(next);
-      return idx;
-    });
+    const next = (currentIdxRef.current + 1) % QUOTES.length;
+    transitionTo(next);
   }, [transitionTo]);
 
   const initialGrid = formatGrid(QUOTES[0]);

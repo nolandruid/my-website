@@ -34,6 +34,12 @@ const TelegramIcon = () => (
   </svg>
 );
 
+const LumaIcon = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
+    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l7 4.5-7 4.5z" />
+  </svg>
+);
+
 const ResumeIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
     <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
@@ -72,6 +78,11 @@ const LINKS: LinkItem[] = [
     href: 'https://t.me/TELEGRAM_USERNAME',
     label: 'Telegram',
     icon: <TelegramIcon />,
+  },
+  {
+    href: 'https://lu.ma/nolandruid',
+    label: 'Luma',
+    icon: <LumaIcon />,
   },
   {
     href: '/resume.pdf',
