@@ -229,7 +229,7 @@ function applyMeshLineMiterPatch(material: THREE.ShaderMaterial) {
  * The ring GLB covers this invisible zone, so no gap is visible. Any miter artifact inside
  * this zone is rendered at near-zero width, making it visually harmless.
  */
-const STRAP_TIP_TAPER = 0.03;
+const STRAP_TIP_TAPER = 0.15;
 
 /** widthCallback for MeshLine — p=0 is the ring end, p=1 is the anchor. */
 function strapWidthTaper(p: number): number {
@@ -620,7 +620,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
                   clearcoat={0.35}
                   clearcoatRoughness={0.25}
                   envMapIntensity={1}
-                  side={THREE.FrontSide}
+                  side={THREE.BackSide}
                 />
               </mesh>
               <mesh geometry={cardGeo} renderOrder={1}>
@@ -631,7 +631,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
                   clearcoat={1}
                   clearcoatRoughness={0.03}
                   envMapIntensity={2}
-                  side={THREE.BackSide}
+                  side={THREE.FrontSide}
                 />
               </mesh>
               {/* polygonOffset + renderOrder: ring draws after strap so it isn’t “shadowed” by meshline depth */}
