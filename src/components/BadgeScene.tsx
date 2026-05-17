@@ -15,58 +15,28 @@ import type { Mesh } from 'three';
 
 extend({ MeshLineGeometry, MeshLineMaterial });
 
-/** Immutable axis for setFromUnitVectors (cylinder cap normal = local +Y). */
-const STUD_CAP_UP = new THREE.Vector3(0, 1, 0);
 
 const TAG_GLB = '/tag.glb';
 const BADGE_IMAGE = '/badge-base.jpeg';
 const BAND_TEXTURE = '/band-dark.jpg';
 
-/** World Y/X of the rope + card anchor point. Y=3.52 keeps anchor off-screen above the badge. */
-const LANYARD_ANCHOR_GROUP_Y = 3.52;
+/** Anchor group position. X=-3 puts badge on left; Y=4 matches Vercel original. */
+const LANYARD_ANCHOR_GROUP_Y = 4;
 const LANYARD_ANCHOR_GROUP_X = -3;
 
-/**
- * Card-end rope bead (j3) sits slightly below j1/j2 so the meshline drops away from the clip
- * before curving toward the anchor (stops strap overlapping clip geometry).
- */
-const ROPE_J3_Y_OFFSET = -0.14;
-
-/**
- * Visual-only: first spline control is nudged from j3 toward j2 so the strap MeshLine
- * stops at the hook ring instead of drawing through the GLB clip geometry. Physics still uses j3.
- */
-const LANYARD_STRAP_END_TRIM = 0.2;
-
-/**
- * Exponential smoothing on the visual strap tip. Reduces MeshLine miter blow-up / flicker.
- */
-const LANYARD_STRAP_TIP_SMOOTH = 40;
-
-/** CatmullRom samples along the strap; more = safer miters. */
+/** CatmullRom samples along the strap; more = smoother curve. */
 const LANYARD_CURVE_SAMPLES = 128;
 
-/** Rope: Vercel-original values — step=0.5, linkLength=1 per segment. */
+/** Rope: Vercel-original values. */
 const ROPE = {
   step: 0.5,
   linkLength: 1,
   ballRadius: 0.1,
 } as const;
 
-const STRAP_STUD = {
-  curveT: 0.1,
-  radius: 0.04 * 2.25,
-  height: 0.022 * 2.25,
-  segments: 32,
-  outset: 0.04,
-} as const;
-
-/**
- * MeshLine repeat/lineWidth. lineWidth=1 matches the Vercel original.
- */
+/** Band texture repeat and line width — matches Vercel original. */
 const BAND_LINE = {
-  repeatU: -2.05,
-  repeatV: 1,
+  repeat: new THREE.Vector2(-3, 1),
   lineWidth: 1,
 } as const;
 
@@ -195,17 +165,6 @@ function applyMeshLineMiterPatch(material: THREE.ShaderMaterial) {
   }
 }
 
-/**
- * Fraction of the strap (from the ring/j3 end) over which MeshLine width tapers from 0→1.
- * The ring GLB covers this invisible zone, so no gap is visible. Any miter artifact inside
- * this zone is rendered at near-zero width, making it visually harmless.
- */
-const STRAP_TIP_TAPER = 0.15;
-
-/** widthCallback for MeshLine — p=0 is the ring end, p=1 is the anchor. */
-function strapWidthTaper(p: number): number {
-  return p < STRAP_TIP_TAPER ? p / STRAP_TIP_TAPER : 1.0;
-}
 
 function cardFaceUvAspect(geometry: THREE.BufferGeometry): number {
   const uvAttr = geometry.attributes.uv as THREE.BufferAttribute | undefined;
@@ -386,18 +345,8 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
   const bandMapSource = useTexture(BAND_TEXTURE) as THREE.Texture;
   const strapTex = useMeshlineStrapTexture(bandMapSource);
   const cardTexture = useBadgeCanvasTexture(badgeImage, CARD_IMAGE_FIT, cardUvAspect);
-  const bandRepeatVec = useMemo(
-    () => new THREE.Vector2(BAND_LINE.repeatU, BAND_LINE.repeatV),
-    [],
-  );
   const bandMatRef = useRef<THREE.ShaderMaterial>(null);
   const band = useRef<THREE.Mesh>(null);
-  const strapStudGroupRef = useRef<THREE.Group>(null);
-  const studCurvePoint = useRef(new THREE.Vector3());
-  const studCurveTangent = useRef(new THREE.Vector3());
-  const studFaceNormal = useRef(new THREE.Vector3());
-  const studFallbackAxis = useRef(new THREE.Vector3());
-  const cameraWorldPos = useRef(new THREE.Vector3());
   const fixed = useRef<RapierRigidBody | null>(null);
   const j1 = useRef<RapierRigidBody | null>(null);
   const j2 = useRef<RapierRigidBody | null>(null);
@@ -419,34 +368,21 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
     applyMeshLineMiterPatch(m);
     m.uniforms.useMap.value = 1;
     m.uniforms.map.value = strapTex;
-    m.uniforms.repeat.value.copy(bandRepeatVec);
+    m.uniforms.repeat.value.copy(BAND_LINE.repeat);
     m.uniforms.resolution.value.set(width, height);
-  }, [strapTex, bandRepeatVec, width, height]);
+  }, [strapTex, width, height]);
 
-  // 4-point curve: j3 (near card) → j2 → j1 → fixed (anchor). Chordal type reduces overshoot.
-  const [curve] = useState(
-    () =>
-      new THREE.CatmullRomCurve3([
-        new THREE.Vector3(),
-        new THREE.Vector3(),
-        new THREE.Vector3(),
-        new THREE.Vector3(),
-      ]),
-  );
-  // 'centripetal' guarantees no cusps or self-intersections between control points,
-  // making it the safest type for dynamically-driven strap geometry.
-  (curve as THREE.CatmullRomCurve3 & { curveType?: string }).curveType = 'centripetal';
+  const [curve] = useState(() => new THREE.CatmullRomCurve3([
+    new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(),
+  ]));
+  (curve as THREE.CatmullRomCurve3 & { curveType?: string }).curveType = 'chordal';
 
   const [dragged, setDragged] = useState<THREE.Vector3 | null>(null);
   const [hovered, setHovered] = useState(false);
 
-  // Smoothed positions for j1, j2, and j3 (reduces lanyard flicker)
+  // Only j1/j2 are lerped (matches Vercel); j3 is used raw for the strap tip
   const j1Lerped = useRef(new THREE.Vector3());
   const j2Lerped = useRef(new THREE.Vector3());
-  const j3Lerped = useRef(new THREE.Vector3());
-  const lanyardBandEnd = useRef(new THREE.Vector3());
-  const smoothedStrapTip = useRef(new THREE.Vector3());
-  const strapTipSmoothingReady = useRef(false);
 
   useRopeJoint(fixed, j1, [[0, 0, 0], [0, 0, 0], ROPE.linkLength]);
   useRopeJoint(j1, j2, [[0, 0, 0], [0, 0, 0], ROPE.linkLength]);
@@ -475,68 +411,27 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
       });
     }
     if (fixed.current && j1.current && j2.current && j3.current && card.current) {
-      [j1, j2, j3].forEach((ref, i) => {
-        const lerped = [j1Lerped, j2Lerped, j3Lerped][i].current;
+      // Lerp only j1/j2 to fix jitter — j3 is used raw (matches Vercel)
+      [j1, j2].forEach((ref, i) => {
+        const lerped = [j1Lerped, j2Lerped][i].current;
         const pos = ref.current!.translation();
+        if (lerped.lengthSq() === 0) lerped.copy(pos);
         const clampedDistance = Math.max(0.1, Math.min(1, lerped.distanceTo(pos)));
-        const t = delta * (minSpeed + clampedDistance * (maxSpeed - minSpeed));
-        lerped.lerp(pos, t);
+        lerped.lerp(pos, delta * (minSpeed + clampedDistance * (maxSpeed - minSpeed)));
       });
-      lanyardBandEnd.current
-        .copy(j3Lerped.current)
-        .lerp(j2Lerped.current, LANYARD_STRAP_END_TRIM);
-      if (!strapTipSmoothingReady.current) {
-        smoothedStrapTip.current.copy(lanyardBandEnd.current);
-        strapTipSmoothingReady.current = true;
-      } else {
-        const k = 1 - Math.exp(-LANYARD_STRAP_TIP_SMOOTH * delta);
-        smoothedStrapTip.current.lerp(lanyardBandEnd.current, k);
-      }
-      curve.points[0].copy(smoothedStrapTip.current);
+      curve.points[0].copy(j3.current.translation());
       curve.points[1].copy(j2Lerped.current);
       curve.points[2].copy(j1Lerped.current);
       curve.points[3].copy(fixed.current.translation());
       const points = curve.getPoints(LANYARD_CURVE_SAMPLES);
       const geometry = band.current?.geometry as {
-        setPoints?: (pts: THREE.Vector3[], widthCb?: (p: number) => number) => void;
+        setPoints?: (pts: THREE.Vector3[]) => void;
       } | undefined;
-      if (geometry?.setPoints) geometry.setPoints(points, strapWidthTaper);
-
-      const studGrp = strapStudGroupRef.current;
-      if (studGrp) {
-        curve.getPointAt(STRAP_STUD.curveT, studCurvePoint.current);
-        curve.getTangentAt(STRAP_STUD.curveT, studCurveTangent.current);
-        const t = studCurveTangent.current;
-        t.normalize();
-        studGrp.position.copy(studCurvePoint.current);
-
-        // Cap faces camera: local +Y → toward camera, projected ⊥ strap (meshline is 2D — pull out a bit).
-        const n = studFaceNormal.current;
-        state.camera.getWorldPosition(cameraWorldPos.current);
-        n.copy(cameraWorldPos.current).sub(studCurvePoint.current).normalize();
-        n.addScaledVector(t, -n.dot(t));
-        if (n.lengthSq() < 1e-6) {
-          const f = studFallbackAxis.current;
-          f.set(0, 1, 0);
-          n.crossVectors(t, f);
-          if (n.lengthSq() < 1e-6) {
-            f.set(1, 0, 0);
-            n.crossVectors(t, f);
-          }
-        }
-        n.normalize();
-        if (Number.isFinite(n.x) && Number.isFinite(n.y) && Number.isFinite(n.z)) {
-          studGrp.quaternion.setFromUnitVectors(STUD_CAP_UP, n);
-        }
-        studGrp.position.addScaledVector(n, STRAP_STUD.outset);
-      }
+      if (geometry?.setPoints) geometry.setPoints(points);
 
       ang.copy(card.current.angvel());
       rot.copy(card.current.rotation());
-      card.current.setAngvel(
-        { x: ang.x, y: ang.y - rot.y * 0.25, z: ang.z },
-        true,
-      );
+      card.current.setAngvel({ x: ang.x, y: ang.y - rot.y * 0.25, z: ang.z }, true);
     }
   });
 
@@ -550,7 +445,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
         <RigidBody ref={j2} position={[ROPE.step * 2, 0, 0]} {...segmentProps}>
           <BallCollider args={[ROPE.ballRadius]} />
         </RigidBody>
-        <RigidBody ref={j3} position={[ROPE.step * 3, ROPE_J3_Y_OFFSET, 0]} {...segmentProps}>
+        <RigidBody ref={j3} position={[ROPE.step * 3, 0, 0]} {...segmentProps}>
           <BallCollider args={[ROPE.ballRadius]} />
         </RigidBody>
         <RigidBody
@@ -560,8 +455,8 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
           type={dragged ? 'kinematicPosition' : 'dynamic'}
         >
           <CuboidCollider args={[0.8, 1.125, 0.01]} />
+          {/* Unscaled wrapper: event handlers + text live here at card-body scale */}
           <group
-            position={[0, 0, -0.05]}
             onPointerOver={() => setHovered(true)}
             onPointerOut={() => setHovered(false)}
             onPointerUp={(e) => {
@@ -579,61 +474,64 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
               }
             }}
           >
-            {/* Vercel tag.glb: rotation flips card so printed face aims at camera; offset+scale align clip hole with spherical joint. */}
-            <group position={[0, -1.2, 0]} scale={2.25} rotation={[0, Math.PI, 0]}>
-              <mesh geometry={cardGeo} renderOrder={1}>
-                <meshPhysicalMaterial
-                  color="#ffffff"
-                  map={cardTexture ?? materials.base.map}
-                  map-anisotropy={16}
-                  metalness={0}
-                  roughness={0.45}
-                  clearcoat={0.35}
-                  clearcoatRoughness={0.25}
-                  envMapIntensity={1}
-                  side={THREE.DoubleSide}
+            {/* Vercel-matched GLB group: scale + position align clip ring with spherical joint */}
+            <group scale={2.25} position={[0, -1.2, -0.05]}>
+              {/* rotation flips card so printed face aims at camera */}
+              <group rotation={[0, Math.PI, 0]}>
+                <mesh geometry={cardGeo} renderOrder={1}>
+                  <meshPhysicalMaterial
+                    color=”#ffffff”
+                    map={cardTexture ?? materials.base.map}
+                    map-anisotropy={16}
+                    metalness={0}
+                    roughness={0.45}
+                    clearcoat={0.35}
+                    clearcoatRoughness={0.25}
+                    envMapIntensity={1}
+                    side={THREE.DoubleSide}
+                  />
+                </mesh>
+                {/* Black back: z=0.005 in the π-rotated group maps to world z≈−0.01 when card
+                    faces camera (photo wins depth), and +0.01 when physics flips it
+                    (black wins depth, covers photo). Both DoubleSide — no normal-flip artifacts. */}
+                <mesh geometry={cardGeo} position={[0, 0, 0.005]} renderOrder={2}>
+                  <meshPhysicalMaterial
+                    color=”#080808”
+                    metalness={0.9}
+                    roughness={0.05}
+                    clearcoat={1}
+                    clearcoatRoughness={0.03}
+                    envMapIntensity={2}
+                    side={THREE.DoubleSide}
+                  />
+                </mesh>
+                <mesh
+                  geometry={nodes.clip.geometry}
+                  material={materials.metal}
+                  material-roughness={0.3}
+                  material-polygonOffset
+                  material-polygonOffsetFactor={-4}
+                  material-polygonOffsetUnits={-4}
+                  renderOrder={2}
                 />
-              </mesh>
-              {/* Black back: z=0.005 in the π-rotated group maps to world z≈−0.01 when card
-                  faces camera (photo wins depth), and to +0.01 when physics flips the card
-                  (black wins depth, covers photo). Both DoubleSide so no normal-flip artifacts. */}
-              <mesh geometry={cardGeo} position={[0, 0, 0.005]} renderOrder={2}>
-                <meshPhysicalMaterial
-                  color="#080808"
-                  metalness={0.9}
-                  roughness={0.05}
-                  clearcoat={1}
-                  clearcoatRoughness={0.03}
-                  envMapIntensity={2}
-                  side={THREE.DoubleSide}
+                <mesh
+                  geometry={nodes.clamp.geometry}
+                  material={materials.metal}
+                  material-polygonOffset
+                  material-polygonOffsetFactor={-4}
+                  material-polygonOffsetUnits={-4}
+                  renderOrder={2}
                 />
-              </mesh>
-              {/* polygonOffset + renderOrder: ring draws after strap so it isn’t “shadowed” by meshline depth */}
-              <mesh
-                geometry={nodes.clip.geometry}
-                material={materials.metal}
-                material-roughness={0.3}
-                material-polygonOffset
-                material-polygonOffsetFactor={-4}
-                material-polygonOffsetUnits={-4}
-                renderOrder={2}
-              />
-              <mesh
-                geometry={nodes.clamp.geometry}
-                material={materials.metal}
-                material-polygonOffset
-                material-polygonOffsetFactor={-4}
-                material-polygonOffsetUnits={-4}
-                renderOrder={2}
-              />
+              </group>
             </group>
+            {/* Text at card-body scale (not inside the 2.25 scale group) */}
             <group
               position={[...BADGE_NAME.groupPosition]}
               rotation={[...BADGE_NAME.groupRotation] as [number, number, number]}
             >
               <group scale={BADGE_NAME.innerScale}>
                 <Text3D
-                  font="/helvetiker_regular.typeface.json"
+                  font=”/helvetiker_regular.typeface.json”
                   size={BADGE_NAME.line1.size}
                   height={BADGE_NAME.line1.height}
                   bevelEnabled={false}
@@ -644,7 +542,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
                   <meshStandardMaterial color={BADGE_NAME.line1.color} side={THREE.DoubleSide} />
                 </Text3D>
                 <Text3D
-                  font="/helvetiker_regular.typeface.json"
+                  font=”/helvetiker_regular.typeface.json”
                   size={BADGE_NAME.line2.size}
                   height={BADGE_NAME.line2.height}
                   bevelEnabled={false}
@@ -659,18 +557,17 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
           </group>
         </RigidBody>
       </group>
-      <mesh ref={band} renderOrder={0}>
+      <mesh ref={band}>
         {/* @ts-expect-error meshline extended primitives */}
         <meshLineGeometry />
         {/* @ts-expect-error meshline extended primitives */}
         <meshLineMaterial
           ref={bandMatRef}
           color="white"
-          depthTest={true}
-          depthWrite={true}
+          depthTest={false}
           resolution={[width, height]}
           map={strapTex}
-          repeat={bandRepeatVec}
+          repeat={BAND_LINE.repeat}
           lineWidth={BAND_LINE.lineWidth}
           useMap={1}
         />
