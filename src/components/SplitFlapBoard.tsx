@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { QUOTES } from '../data/quotes';
 
-const ROWS = 4;
+const ROWS = 6;
 const COLS = 18;
 const CHARSET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.,-!?\' ';
 const SCRAMBLE_COLORS = [
@@ -60,15 +60,15 @@ function formatGrid(quote: string): string[][] {
   }
   if (current) rawLines.push(current);
 
-  // Centre vertically in ROWS rows
-  while (rawLines.length < ROWS) {
-    rawLines.unshift('');
-    if (rawLines.length < ROWS) rawLines.push('');
-  }
-  rawLines.length = ROWS;
+  // Place content in the upper third so short quotes don't sink to the middle
+  const topPad = Math.floor((ROWS - rawLines.length) / 2);
+  const padded: string[] = [...Array(topPad).fill(''), ...rawLines];
+  while (padded.length < ROWS) padded.push('');
+  padded.length = ROWS;
+  const result = padded;
 
   // Centre-align each line within COLS cols
-  return rawLines.map((line) => {
+  return result.map((line) => {
     const pad = Math.floor((COLS - line.length) / 2);
     const padded = ' '.repeat(pad) + line;
     return padded.padEnd(COLS).split('');
@@ -104,6 +104,8 @@ export function SplitFlapBoard() {
   const displayedGrid = useRef<string[][]>(formatGrid(pool[0]));
   const isTransitioning = useRef(false);
   const currentIdxRef = useRef(0);
+  const stopAudioTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playAudioTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [quoteIdx, setQuoteIdx] = useState(0);
   const [soundOn, setSoundOn] = useState(true);
@@ -161,21 +163,53 @@ export function SplitFlapBoard() {
       if (isTransitioning.current) return;
       isTransitioning.current = true;
 
+      // Cancel any pending audio timers from a previous (possibly interrupted) transition
+      if (stopAudioTimer.current !== null) {
+        clearTimeout(stopAudioTimer.current);
+        stopAudioTimer.current = null;
+      }
+      if (playAudioTimer.current !== null) {
+        clearTimeout(playAudioTimer.current);
+        playAudioTimer.current = null;
+      }
+
       const nextGrid = formatGrid(poolRef.current[nextIdx] ?? poolRef.current[0]);
       const current = displayedGrid.current;
 
-      // Animate rows one after another; play audio at the moment each row starts
+      // Stagger rows relative to the first row that has changes, so empty leading
+      // rows don't cause a visible delay before anything moves
+      let firstChangingRow = ROWS;
       nextGrid.forEach((rowChars, r) => {
-        const rowDelay = r * ROW_STAGGER_MS;
-        const rowHasChange = rowChars.some((char, c) => char !== current[r]?.[c]);
-        if (rowHasChange) {
-          setTimeout(() => {
-            if (soundRef.current && audioRef.current) {
-              audioRef.current.currentTime = 0;
-              audioRef.current.play().catch(() => {});
-            }
-          }, rowDelay);
+        if (firstChangingRow === ROWS && rowChars.some((char, c) => char !== current[r]?.[c])) {
+          firstChangingRow = r;
         }
+      });
+
+      // Compute min/max tile delays for audio start and stop
+      let minChangeDelay = Infinity;
+      let maxChangeDelay = -Infinity;
+      nextGrid.forEach((rowChars, r) => {
+        rowChars.forEach((char, c) => {
+          if (char !== current[r]?.[c]) {
+            const d = (r - firstChangingRow) * ROW_STAGGER_MS + c * COL_STAGGER_MS;
+            if (d < minChangeDelay) minChangeDelay = d;
+            if (d > maxChangeDelay) maxChangeDelay = d;
+          }
+        });
+      });
+      if (minChangeDelay !== Infinity) {
+        playAudioTimer.current = setTimeout(() => {
+          playAudioTimer.current = null;
+          if (soundRef.current && audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(() => {});
+          }
+        }, minChangeDelay + SCRAMBLE_INTERVAL_MS);
+      }
+
+      // Animate rows, staggered from the first changing row
+      nextGrid.forEach((rowChars, r) => {
+        const rowDelay = (r - firstChangingRow) * ROW_STAGGER_MS;
         rowChars.forEach((char, c) => {
           if (char !== current[r]?.[c]) {
             animateTile(r, c, char, rowDelay + c * COL_STAGGER_MS);
@@ -187,10 +221,16 @@ export function SplitFlapBoard() {
       currentIdxRef.current = nextIdx;
       setQuoteIdx(nextIdx);
 
-      // Unlock after all rows finish
+      // Stop audio and unlock when the last changing tile settles
+      // MAX_SCRAMBLES+3 covers the random extra scrambles; SETTLE_MS*2 covers both settle phases
       const totalDuration =
-        ROWS * ROW_STAGGER_MS + COLS * COL_STAGGER_MS + MAX_SCRAMBLES * SCRAMBLE_INTERVAL_MS + 500;
-      setTimeout(() => {
+        maxChangeDelay + (MAX_SCRAMBLES + 3) * SCRAMBLE_INTERVAL_MS + SETTLE_MS * 2;
+      stopAudioTimer.current = setTimeout(() => {
+        if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current.currentTime = 0;
+        }
+        stopAudioTimer.current = null;
         isTransitioning.current = false;
       }, totalDuration);
     },
@@ -207,6 +247,7 @@ export function SplitFlapBoard() {
   }, [transitionTo]);
 
   const handleNext = useCallback(() => {
+    isTransitioning.current = false; // user intent overrides guard
     const next = (currentIdxRef.current + 1) % poolRef.current.length;
     transitionTo(next);
   }, [transitionTo]);
@@ -259,7 +300,11 @@ export function SplitFlapBoard() {
           NEXT →
         </button>
         <button
-          onClick={() => setSoundOn((s) => !s)}
+          onClick={() => {
+            const next = !soundRef.current;
+            soundRef.current = next;
+            setSoundOn(next);
+          }}
           className="text-sm text-neutral-600 hover:text-neutral-300 transition-colors"
           title={soundOn ? 'Mute' : 'Unmute'}
         >
