@@ -620,10 +620,13 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
                   clearcoat={0.35}
                   clearcoatRoughness={0.25}
                   envMapIntensity={1}
-                  side={THREE.BackSide}
+                  side={THREE.DoubleSide}
                 />
               </mesh>
-              <mesh geometry={cardGeo} renderOrder={1}>
+              {/* Black back: z=0.005 in the π-rotated group maps to world z≈−0.01 when card
+                  faces camera (photo wins depth), and to +0.01 when physics flips the card
+                  (black wins depth, covers photo). Both DoubleSide so no normal-flip artifacts. */}
+              <mesh geometry={cardGeo} position={[0, 0, 0.005]} renderOrder={2}>
                 <meshPhysicalMaterial
                   color="#080808"
                   metalness={0.9}
@@ -631,7 +634,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
                   clearcoat={1}
                   clearcoatRoughness={0.03}
                   envMapIntensity={2}
-                  side={THREE.FrontSide}
+                  side={THREE.DoubleSide}
                 />
               </mesh>
               {/* polygonOffset + renderOrder: ring draws after strap so it isn’t “shadowed” by meshline depth */}
