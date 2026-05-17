@@ -380,9 +380,10 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
   const [dragged, setDragged] = useState<THREE.Vector3 | null>(null);
   const [hovered, setHovered] = useState(false);
 
-  // Only j1/j2 are lerped (matches Vercel); j3 is used raw for the strap tip
   const j1Lerped = useRef(new THREE.Vector3());
   const j2Lerped = useRef(new THREE.Vector3());
+  // j3 gets light smoothing to kill miter flicker at the clip joint
+  const j3Lerped = useRef(new THREE.Vector3());
 
   useRopeJoint(fixed, j1, [[0, 0, 0], [0, 0, 0], ROPE.linkLength]);
   useRopeJoint(j1, j2, [[0, 0, 0], [0, 0, 0], ROPE.linkLength]);
@@ -411,7 +412,6 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
       });
     }
     if (fixed.current && j1.current && j2.current && j3.current && card.current) {
-      // Lerp only j1/j2 to fix jitter — j3 is used raw (matches Vercel)
       [j1, j2].forEach((ref, i) => {
         const lerped = [j1Lerped, j2Lerped][i].current;
         const pos = ref.current!.translation();
@@ -419,7 +419,11 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
         const clampedDistance = Math.max(0.1, Math.min(1, lerped.distanceTo(pos)));
         lerped.lerp(pos, delta * (minSpeed + clampedDistance * (maxSpeed - minSpeed)));
       });
-      curve.points[0].copy(j3.current.translation());
+      // Smooth j3 lightly so the strap-tip angle doesn't snap, killing miter flicker at the clip
+      const j3Pos = j3.current.translation();
+      if (j3Lerped.current.lengthSq() === 0) j3Lerped.current.copy(j3Pos);
+      j3Lerped.current.lerp(j3Pos, delta * 15);
+      curve.points[0].copy(j3Lerped.current);
       curve.points[1].copy(j2Lerped.current);
       curve.points[2].copy(j1Lerped.current);
       curve.points[3].copy(fixed.current.translation());
