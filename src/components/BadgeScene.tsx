@@ -22,15 +22,8 @@ const TAG_GLB = '/tag.glb';
 const BADGE_IMAGE = '/badge-base.jpeg';
 const BAND_TEXTURE = '/band-dark.jpg';
 
-/**
- * Scales rope length, joint spacing, rope rest length, ball colliders, stud, and strap line width.
- * Badge GLB scale is unchanged (`scale={2.25}` on the tag group).
- */
-const LANYARD_WORLD_SCALE = 0.5;
-
-/** World Y of the rope + card group — lower moves the whole badge down in the frame. */
-/** Too high and the strap spline crowds the metal clip; ~3.5 keeps lift without overlap. */
-const LANYARD_ANCHOR_GROUP_Y = 4.5;
+/** World Y/X of the rope + card anchor point. Y=3.52 keeps anchor off-screen above the badge. */
+const LANYARD_ANCHOR_GROUP_Y = 3.52;
 const LANYARD_ANCHOR_GROUP_X = -3;
 
 /**
@@ -42,61 +35,39 @@ const ROPE_J3_Y_OFFSET = -0.14;
 /**
  * Visual-only: first spline control is nudged from j3 toward j2 so the strap MeshLine
  * stops at the hook ring instead of drawing through the GLB clip geometry. Physics still uses j3.
- * 0 = use real j3; ~0.15–0.28 typical; too high detaches the line from the badge.
  */
 const LANYARD_STRAP_END_TRIM = 0.2;
 
 /**
- * Exponential smoothing on the visual strap tip (follows j3→j2 trim target). Reduces MeshLine
- * miter blow-up / “cone” flicker when the card moves — the line tip stops snapping every frame.
+ * Exponential smoothing on the visual strap tip. Reduces MeshLine miter blow-up / flicker.
  */
 const LANYARD_STRAP_TIP_SMOOTH = 40;
 
-/** CatmullRom samples along the strap; more points = smaller per-segment angles = safer miters. */
+/** CatmullRom samples along the strap; more = safer miters. */
 const LANYARD_CURVE_SAMPLES = 128;
 
-/**
- * Stretches horizontal spacing between joints (longer strap arc, less “tight” chain).
- * 1 = minimum; raise toward ~1.5 for more length between anchor and card.
- */
-const ROPE_SPAN_STRETCH = 1.42;
-
-/**
- * Rope segment max length ÷ joint spacing — above ~2 adds slack so the lanyard can sag.
- */
-const ROPE_LINK_SLACK = 2.45;
-
-/** Rope: fixed → j1 → j2 → j3 → card, even spacing on X. */
+/** Rope: Vercel-original values — step=0.5, linkLength=1 per segment. */
 const ROPE = {
-  step: 0.5 * LANYARD_WORLD_SCALE * ROPE_SPAN_STRETCH,
-  linkLength: 0.5 * LANYARD_WORLD_SCALE * ROPE_SPAN_STRETCH * ROPE_LINK_SLACK,
-  ballRadius: 0.1 * LANYARD_WORLD_SCALE,
+  step: 0.5,
+  linkLength: 1,
+  ballRadius: 0.1,
 } as const;
 
-/**
- * Strap rivet — lives on the lanyard curve (not parented to the card).
- * curveT: 0 = j3/card end of spline, 1 = anchor; ~0.06–0.15 sits just above the clip.
- * Cylinder axis Y is aligned to strap tangent each frame (disc ⊥ strap).
- */
 const STRAP_STUD = {
   curveT: 0.1,
-  radius: 0.04 * 2.25 * LANYARD_WORLD_SCALE,
-  /** Taller than real scale so the disc isn’t paper-thin when seen at a grazing angle */
-  height: 0.022 * 2.25 * LANYARD_WORLD_SCALE,
+  radius: 0.04 * 2.25,
+  height: 0.022 * 2.25,
   segments: 32,
-  /** Nudge along view normal so the stud clears the 2D mesh line (avoids z-fight / hiding). */
-  outset: 0.04 * LANYARD_WORLD_SCALE,
+  outset: 0.04,
 } as const;
 
 /**
- * MeshLine samples `vUV * repeat` — smaller |repeatU| stretches the texture along the strap
- * (fewer tiles, less cramped weave). Negative repeatU mirrors; lineWidth is screen px (scales with lanyard).
+ * MeshLine repeat/lineWidth. lineWidth=1 matches the Vercel original.
  */
 const BAND_LINE = {
-  /** Smaller |repeatU| = texture stretched more along the strap (good if the rope got longer). */
   repeatU: -2.05,
   repeatV: 1,
-  lineWidth: 2.1 * LANYARD_WORLD_SCALE,
+  lineWidth: 1,
 } as const;
 
 useGLTF.preload(TAG_GLB);
