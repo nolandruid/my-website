@@ -422,7 +422,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
       // Smooth j3 lightly so the strap-tip angle doesn't snap, killing miter flicker at the clip
       const j3Pos = j3.current.translation();
       if (j3Lerped.current.lengthSq() === 0) j3Lerped.current.copy(j3Pos);
-      j3Lerped.current.lerp(j3Pos, delta * 15);
+      j3Lerped.current.lerp(j3Pos, Math.min(1, delta * 60));
       curve.points[0].copy(j3Lerped.current);
       curve.points[1].copy(j2Lerped.current);
       curve.points[2].copy(j1Lerped.current);
