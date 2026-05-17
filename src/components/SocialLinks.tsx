@@ -35,8 +35,8 @@ const TelegramIcon = () => (
 );
 
 const LumaIcon = () => (
-  <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22">
-    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l7 4.5-7 4.5z" />
+  <svg viewBox="593 -2 134 132" fill="currentColor" width="22" height="22">
+    <path d="M723.57 64.19C688.46 64.19 660 35.73 660 0.62c0 35.11-28.46 63.57-63.57 63.57h0c35.11 0 63.57 28.46 63.57 63.57h0c0-35.11 28.46-63.57 63.57-63.57z" />
   </svg>
 );
 

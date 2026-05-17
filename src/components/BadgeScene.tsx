@@ -30,7 +30,8 @@ const LANYARD_WORLD_SCALE = 0.5;
 
 /** World Y of the rope + card group — lower moves the whole badge down in the frame. */
 /** Too high and the strap spline crowds the metal clip; ~3.5 keeps lift without overlap. */
-const LANYARD_ANCHOR_GROUP_Y = 3.52;
+const LANYARD_ANCHOR_GROUP_Y = 4.5;
+const LANYARD_ANCHOR_GROUP_X = -3;
 
 /**
  * Card-end rope bead (j3) sits slightly below j1/j2 so the meshline drops away from the clip
@@ -49,10 +50,10 @@ const LANYARD_STRAP_END_TRIM = 0.2;
  * Exponential smoothing on the visual strap tip (follows j3→j2 trim target). Reduces MeshLine
  * miter blow-up / “cone” flicker when the card moves — the line tip stops snapping every frame.
  */
-const LANYARD_STRAP_TIP_SMOOTH = 18;
+const LANYARD_STRAP_TIP_SMOOTH = 40;
 
 /** CatmullRom samples along the strap; more points = smaller per-segment angles = safer miters. */
-const LANYARD_CURVE_SAMPLES = 96;
+const LANYARD_CURVE_SAMPLES = 128;
 
 /**
  * Stretches horizontal spacing between joints (longer strap arc, less “tight” chain).
@@ -228,7 +229,7 @@ function applyMeshLineMiterPatch(material: THREE.ShaderMaterial) {
  * The ring GLB covers this invisible zone, so no gap is visible. Any miter artifact inside
  * this zone is rendered at near-zero width, making it visually harmless.
  */
-const STRAP_TIP_TAPER = 0.15;
+const STRAP_TIP_TAPER = 0.03;
 
 /** widthCallback for MeshLine — p=0 is the ring end, p=1 is the anchor. */
 function strapWidthTaper(p: number): number {
@@ -570,7 +571,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
 
   return (
     <>
-      <group position={[0, LANYARD_ANCHOR_GROUP_Y, 0]}>
+      <group position={[LANYARD_ANCHOR_GROUP_X, LANYARD_ANCHOR_GROUP_Y, 0]}>
         <RigidBody ref={fixed} {...segmentProps} type="fixed" />
         <RigidBody ref={j1} position={[ROPE.step, 0, 0]} {...segmentProps}>
           <BallCollider args={[ROPE.ballRadius]} />
@@ -619,7 +620,18 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
                   clearcoat={0.35}
                   clearcoatRoughness={0.25}
                   envMapIntensity={1}
-                  side={THREE.DoubleSide}
+                  side={THREE.FrontSide}
+                />
+              </mesh>
+              <mesh geometry={cardGeo} renderOrder={1}>
+                <meshPhysicalMaterial
+                  color="#080808"
+                  metalness={0.9}
+                  roughness={0.05}
+                  clearcoat={1}
+                  clearcoatRoughness={0.03}
+                  envMapIntensity={2}
+                  side={THREE.BackSide}
                 />
               </mesh>
               {/* polygonOffset + renderOrder: ring draws after strap so it isn’t “shadowed” by meshline depth */}
@@ -672,25 +684,6 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
             </group>
           </group>
         </RigidBody>
-      </group>
-      <group ref={strapStudGroupRef} renderOrder={3}>
-        <mesh renderOrder={3}>
-          <cylinderGeometry
-            args={[STRAP_STUD.radius, STRAP_STUD.radius, STRAP_STUD.height, STRAP_STUD.segments]}
-          />
-          <meshPhysicalMaterial
-            color="#eef2f8"
-            metalness={1}
-            roughness={0.06}
-            clearcoat={1}
-            clearcoatRoughness={0.025}
-            envMapIntensity={1.55}
-            specularIntensity={1}
-            emissive="#334155"
-            emissiveIntensity={0.12}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
       </group>
       <mesh ref={band} renderOrder={0}>
         {/* @ts-expect-error meshline extended primitives */}
