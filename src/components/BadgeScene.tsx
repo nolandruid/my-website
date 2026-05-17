@@ -71,7 +71,7 @@ const segmentProps = {
 /**
  * Card photo size (uniform inset on all sides after UVs are normalized).
  *   0.03  = default — small margin
- *   0.08–0.12 = clearly smaller photo, more “frame” visible
+ *   0.08–0.12 = clearly smaller photo, more "frame" visible
  *   0.2   = photo quite small on the card
  *   0     = full bleed (edge to edge)
  * Tweak this number only — no other change needed to shrink or grow the image.
@@ -480,7 +480,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
               <group rotation={[0, Math.PI, 0]}>
                 <mesh geometry={cardGeo} renderOrder={1}>
                   <meshPhysicalMaterial
-                    color=”#ffffff”
+                    color="#ffffff"
                     map={cardTexture ?? materials.base.map}
                     map-anisotropy={16}
                     metalness={0}
@@ -491,12 +491,12 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
                     side={THREE.DoubleSide}
                   />
                 </mesh>
-                {/* Black back: z=0.005 in the π-rotated group maps to world z≈−0.01 when card
+                {/* Black back: z=0.005 in the pi-rotated group maps to world z~=-0.01 when card
                     faces camera (photo wins depth), and +0.01 when physics flips it
-                    (black wins depth, covers photo). Both DoubleSide — no normal-flip artifacts. */}
+                    (black wins depth, covers photo). Both DoubleSide -- no normal-flip artifacts. */}
                 <mesh geometry={cardGeo} position={[0, 0, 0.005]} renderOrder={2}>
                   <meshPhysicalMaterial
-                    color=”#080808”
+                    color="#080808"
                     metalness={0.9}
                     roughness={0.05}
                     clearcoat={1}
@@ -531,7 +531,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
             >
               <group scale={BADGE_NAME.innerScale}>
                 <Text3D
-                  font=”/helvetiker_regular.typeface.json”
+                  font="/helvetiker_regular.typeface.json"
                   size={BADGE_NAME.line1.size}
                   height={BADGE_NAME.line1.height}
                   bevelEnabled={false}
@@ -542,7 +542,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
                   <meshStandardMaterial color={BADGE_NAME.line1.color} side={THREE.DoubleSide} />
                 </Text3D>
                 <Text3D
-                  font=”/helvetiker_regular.typeface.json”
+                  font="/helvetiker_regular.typeface.json"
                   size={BADGE_NAME.line2.size}
                   height={BADGE_NAME.line2.height}
                   bevelEnabled={false}
