@@ -166,6 +166,19 @@ function applyMeshLineMiterPatch(material: THREE.ShaderMaterial) {
 }
 
 
+/**
+ * Fraction of the strap (from the ring/j3 end) rendered at zero width. The clip GLB covers
+ * this zone, so no gap is visible — and any residual miter pinch from physics jitter on j3
+ * is rendered at 0 width, making it invisible. Hard step (not a taper) so the visible strap
+ * stays at uniform width — no conical look.
+ */
+const STRAP_TIP_HIDE = 0.03;
+
+/** widthCallback for MeshLine — p=0 is the ring/j3 end, p=1 is the fixed anchor. */
+function strapWidthTaper(p: number): number {
+  return p < STRAP_TIP_HIDE ? 0 : 1;
+}
+
 function cardFaceUvAspect(geometry: THREE.BufferGeometry): number {
   const uvAttr = geometry.attributes.uv as THREE.BufferAttribute | undefined;
   if (!uvAttr) return 1;
@@ -375,7 +388,10 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
   const [curve] = useState(() => new THREE.CatmullRomCurve3([
     new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(),
   ]));
-  (curve as THREE.CatmullRomCurve3 & { curveType?: string }).curveType = 'chordal';
+  // centripetal Catmull-Rom: well-behaved endpoint tangents, no cusps when control points
+  // bunch up near the clip. chordal swings the strap-tip direction on small j3 jitter,
+  // which manifests as miter flicker at the clip.
+  (curve as THREE.CatmullRomCurve3 & { curveType?: string }).curveType = 'centripetal';
 
   const [dragged, setDragged] = useState<THREE.Vector3 | null>(null);
   const [hovered, setHovered] = useState(false);
@@ -419,7 +435,10 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
         const clampedDistance = Math.max(0.1, Math.min(1, lerped.distanceTo(pos)));
         lerped.lerp(pos, delta * (minSpeed + clampedDistance * (maxSpeed - minSpeed)));
       });
-      // Smooth j3 lightly so the strap-tip angle doesn't snap, killing miter flicker at the clip
+      // j3 must NOT lag the card: rapier interpolates the card mesh between physics steps,
+      // and any smoothing here puts the strap end behind the clip → visible gap at the junction.
+      // Keep this as a near-snap (delta*60 ≈ 1 at 60fps); the centripetal curve + miter patch
+      // handle tangent stability without needing positional smoothing.
       const j3Pos = j3.current.translation();
       if (j3Lerped.current.lengthSq() === 0) j3Lerped.current.copy(j3Pos);
       j3Lerped.current.lerp(j3Pos, Math.min(1, delta * 60));
@@ -429,9 +448,9 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
       curve.points[3].copy(fixed.current.translation());
       const points = curve.getPoints(LANYARD_CURVE_SAMPLES);
       const geometry = band.current?.geometry as {
-        setPoints?: (pts: THREE.Vector3[]) => void;
+        setPoints?: (pts: THREE.Vector3[], widthCb?: (p: number) => number) => void;
       } | undefined;
-      if (geometry?.setPoints) geometry.setPoints(points);
+      if (geometry?.setPoints) geometry.setPoints(points, strapWidthTaper);
 
       ang.copy(card.current.angvel());
       rot.copy(card.current.rotation());
@@ -561,7 +580,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
           </group>
         </RigidBody>
       </group>
-      <mesh ref={band}>
+      <mesh ref={band} renderOrder={3}>
         {/* @ts-expect-error meshline extended primitives */}
         <meshLineGeometry />
         {/* @ts-expect-error meshline extended primitives */}
