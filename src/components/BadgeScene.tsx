@@ -580,7 +580,7 @@ export function BadgeScene({ maxSpeed = 50, minSpeed = 10, onDragStart, onDragEn
           </group>
         </RigidBody>
       </group>
-      <mesh ref={band}>
+      <mesh ref={band} renderOrder={3}>
         {/* @ts-expect-error meshline extended primitives */}
         <meshLineGeometry />
         {/* @ts-expect-error meshline extended primitives */}
