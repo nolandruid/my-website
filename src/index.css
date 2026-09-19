@@ -2,82 +2,290 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ──────────────────────────────────────────────────────────
+   Theme tokens
+   Light is the default; dark overrides under [data-theme="dark"].
+   The inline script in index.html sets data-theme before paint,
+   so there is no flash of the wrong theme.
+   ────────────────────────────────────────────────────────── */
+:root {
+  --bg: #ffffff;
+  --fg: #171717;
+  --muted: #737373;
+  --muted-strong: #525252;
+  --border: #e5e5e5;
+  --accent: #2563eb;
+  --card-bg: #fafafa;
+  --toggle-bg: #ffffff;
+  --toggle-border: #e5e5e5;
+  --toggle-hover: #f5f5f5;
+}
+
+:root[data-theme='dark'] {
+  --bg: #0a0a0a;
+  --fg: #ededed;
+  --muted: #a3a3a3;
+  --muted-strong: #d4d4d4;
+  --border: #262626;
+  --accent: #7da2ff;
+  --card-bg: #141414;
+  --toggle-bg: #171717;
+  --toggle-border: #2a2a2a;
+  --toggle-hover: #222222;
+}
+
+/* Fallback for the (rare) case where the attribute never gets set. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) {
+    --bg: #0a0a0a;
+    --fg: #ededed;
+    --muted: #a3a3a3;
+    --muted-strong: #d4d4d4;
+    --border: #262626;
+    --accent: #7da2ff;
+    --card-bg: #141414;
+    --toggle-bg: #171717;
+    --toggle-border: #2a2a2a;
+    --toggle-hover: #222222;
+  }
+}
+
 html,
 body,
 #root {
-  height: 100%;
+  min-height: 100%;
 }
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif;
-  background-color: #111;
-  color: #1e293b;
+  font-family: Arial, Helvetica, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background-color: var(--bg);
+  color: var(--fg);
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* ── Split-flap board ── */
-.split-flap-board {
-  background: #0d0d0d;
-  border: 1px solid #1e1e1e;
-  box-shadow: 0 0 60px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255,255,255,0.03);
+a {
+  color: var(--fg);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--border);
+  transition: text-decoration-color 0.15s ease, color 0.15s ease;
 }
 
-/* Individual tile */
-.tile {
-  width: 40px;
-  height: 64px;
-  perspective: 500px;
-  background: #111;
-  border-radius: 3px;
+a:hover {
+  color: var(--accent);
+  text-decoration-color: var(--accent);
+}
+
+/* ── Page shell ── */
+.page {
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* ── Theme toggle (fixed, top-right) ── */
+.theme-toggle {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--toggle-border);
+  background: var(--toggle-bg);
+  color: var(--fg);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.theme-toggle:hover {
+  background: var(--toggle-hover);
+  transform: translateY(-1px);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ── Content column ── */
+.content {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 6rem 1.5rem 5rem;
+  box-sizing: border-box;
+}
+
+/* ── Hero ── */
+.hero {
+  text-align: center;
+  margin-bottom: 5rem;
+}
+
+.name {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: clamp(2rem, 6vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0 0 0.75rem;
+}
+
+.tagline {
+  margin: 0 auto;
+  max-width: 34ch;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+/* ── Sections ── */
+.section {
+  margin-bottom: 3.5rem;
+}
+
+.section-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 1.25rem;
+  font-family: 'SF Mono', ui-monospace, 'JetBrains Mono', Menlo, Consolas, monospace;
+}
+
+/* ── Bulleted lists (/now) ── */
+.bullets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bullets li {
+  position: relative;
+  padding-left: 1.75rem;
+  margin-bottom: 1.1rem;
+  color: var(--muted-strong);
+}
+
+.bullets li:last-child {
+  margin-bottom: 0;
+}
+
+.bullets .emoji {
+  position: absolute;
+  left: 0;
+  top: 0.05em;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+strong {
+  color: var(--fg);
+  font-weight: 600;
+}
+
+/* ── Project cards ── */
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.card {
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  border-radius: 10px;
+  padding: 1rem 1.15rem;
+}
+
+.card > a,
+.card-title-static {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--fg);
+}
+
+.card > a {
+  text-decoration-color: var(--border);
+}
+
+.card-desc {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+/* ── Prose (/about) ── */
+.prose {
+  margin: 0;
+  color: var(--muted-strong);
+  max-width: 60ch;
+}
+
+/* ── Links (/elsewhere) ── */
+.links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.75rem;
+}
+
+.links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  color: var(--muted-strong);
+  font-size: 0.9375rem;
+}
+
+.links a:hover {
+  color: var(--accent);
+}
+
+.links svg {
   flex-shrink: 0;
 }
 
-.tile-inner {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  transform-style: preserve-3d;
+/* ── Footer ── */
+.footer {
+  margin-top: 5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border);
+  text-align: center;
 }
 
-.tile-front,
-.tile-back {
-  position: absolute;
-  inset: 1px;
-  backface-visibility: hidden;
-  background: #1c1c1c;
-  border-radius: 2px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  box-shadow: inset 0 1px 4px rgba(0,0,0,0.7), inset 0 -1px 1px rgba(255,255,255,0.03);
+.footer-name {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1.05rem;
+  color: var(--muted);
 }
 
-/* Mechanical seam line */
-.tile-front::after,
-.tile-back::after {
-  content: '';
-  position: absolute;
-  left: 0; right: 0;
-  top: 50%;
-  height: 1px;
-  background: rgba(0,0,0,0.5);
-  pointer-events: none;
-}
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .content {
+    padding: 4.5rem 1rem 3.5rem;
+  }
 
-.tile-front span,
-.tile-back span {
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 28px;
-  font-weight: 700;
-  color: #f0f0f0;
-  text-transform: uppercase;
-  line-height: 1;
-  letter-spacing: 1px;
-  user-select: none;
-}
+  .theme-toggle {
+    top: 0.85rem;
+    right: 0.85rem;
+    width: 38px;
+    height: 38px;
+  }
 
-.tile-back {
-  transform: rotateX(180deg);
+  .hero {
+    margin-bottom: 3.5rem;
+  }
 }
-
