@@ -100,21 +100,22 @@ function App() {
 
   return (
     <div className="page">
-      <button
-        type="button"
-        className="theme-toggle"
-        onClick={toggleTheme}
-        aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-        title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-      >
-        {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-      </button>
-
       <main className="content">
-        {/* ── Hero: name replaces the reference site's signature ── */}
+        {/* Hero: name replaces the reference site's signature */}
         <header className="hero">
-          <h1 className="name">Nolan Druid</h1>
-          {/* TODO: Nolan to edit — one-line intro of what you're doing right now */}
+          <div className="name-row">
+            <h1 className="name">Nolan Druid</h1>
+            <button
+              type="button"
+              className="theme-toggle"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+            </button>
+          </div>
+          {/* TODO: Nolan to edit - one-line intro of what you're doing right now */}
           <p className="tagline">
             Student, builder, and blockchain enthusiast based in Ottawa.
           </p>
@@ -122,8 +123,8 @@ function App() {
 
         {/* ── /now ── */}
         <section className="section" aria-labelledby="now-heading">
-          <h2 id="now-heading" className="section-label">/now</h2>
-          {/* TODO: Nolan to edit — what you're focused on these days */}
+          <h2 id="now-heading" className="section-label">now</h2>
+          {/* TODO: Nolan to edit - what you're focused on these days */}
           <ul className="bullets">
             <li>
               <span className="emoji" aria-hidden="true">🎓</span>
@@ -135,8 +136,8 @@ function App() {
               Getting involved with{' '}
               <a href="https://ottawablockchain.ca" target="_blank" rel="noreferrer">
                 Ottawa Blockchain
-              </a>{' '}
-              — exploring decentralized tech and community.
+              </a>
+              , exploring decentralized tech and community.
             </li>
             <li>
               <span className="emoji" aria-hidden="true">💻</span>
@@ -151,8 +152,8 @@ function App() {
 
         {/* ── /projects ── */}
         <section className="section" aria-labelledby="projects-heading">
-          <h2 id="projects-heading" className="section-label">/projects</h2>
-          {/* TODO: Nolan to edit — replace the placeholder projects below with real ones */}
+          <h2 id="projects-heading" className="section-label">projects</h2>
+          {/* TODO: Nolan to edit - replace the placeholder projects below with real ones */}
           <ul className="cards">
             <li className="card">
               <a href="https://ottawablockchain.ca" target="_blank" rel="noreferrer">
@@ -162,18 +163,18 @@ function App() {
                 Community and events around blockchain and Web3 in Ottawa.
               </p>
             </li>
-            {/* TODO: Nolan to edit — placeholder project */}
+            {/* TODO: Nolan to edit - placeholder project */}
             <li className="card">
               <span className="card-title-static">Project One</span>
               <p className="card-desc">
                 A short description of something you built. Add a link when it's live.
               </p>
             </li>
-            {/* TODO: Nolan to edit — placeholder project */}
+            {/* TODO: Nolan to edit - placeholder project */}
             <li className="card">
               <span className="card-title-static">Project Two</span>
               <p className="card-desc">
-                Another placeholder — swap in a real project and a one-line summary.
+                Another placeholder. Swap in a real project and a one-line summary.
               </p>
             </li>
           </ul>
@@ -181,8 +182,8 @@ function App() {
 
         {/* ── /about ── */}
         <section className="section" aria-labelledby="about-heading">
-          <h2 id="about-heading" className="section-label">/about</h2>
-          {/* TODO: Nolan to edit — a couple of sentences about who you are */}
+          <h2 id="about-heading" className="section-label">about</h2>
+          {/* TODO: Nolan to edit - a couple of sentences about who you are */}
           <p className="prose">
             I'm Nolan, a Carleton University student and builder based in Ottawa. I like
             learning how things work, contributing to communities, and turning ideas
@@ -192,7 +193,7 @@ function App() {
 
         {/* ── /elsewhere ── */}
         <section className="section" aria-labelledby="elsewhere-heading">
-          <h2 id="elsewhere-heading" className="section-label">/elsewhere</h2>
+          <h2 id="elsewhere-heading" className="section-label">elsewhere</h2>
           <ul className="links">
             <li>
               <a href="https://github.com/nolandruid" target="_blank" rel="noreferrer">
