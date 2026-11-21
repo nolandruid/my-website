@@ -2,7 +2,7 @@
 
 > Computer science student at Carleton University (AI/ML stream) and builder in Ottawa, Canada. Seeking a Summer 2027 software engineering or AI internship.
 
-Website revamp underway (placeholder as of 2026-11-21). Full resume: [resume.pdf](https://nolandruid.com/resume.pdf).
+Website revamp underway. Last update: Nov 21, 2026. Full resume: [resume.pdf](https://nolandruid.com/resume.pdf).
 
 ## Education
 
