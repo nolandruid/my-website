@@ -1,0 +1,44 @@
+# Nolan Druid
+
+> Computer science student at Carleton University (AI/ML stream) and builder in Ottawa, Canada. Seeking a Summer 2027 software engineering or AI internship.
+
+Website revamp underway (placeholder as of 2026-11-21). Full resume: [resume.pdf](https://nolandruid.com/resume.pdf).
+
+## Education
+
+- Carleton University, B.C.S. Honours, AI/ML Stream, Minor in Statistics and Economics (Sep 2024 to Apr 2028). GPA 3.78/4.0. Merit scholarships covering 75% of tuition per year.
+
+## Experience
+
+- Solace, Software Developer Co-op, Developer Relations (Sep 2026 to present): building a unified developer hub, hosting events and webinars, turning developer pain points into features.
+- Employment and Social Development Canada, Co-op Student, Chief Data Officer Branch (Jan to Aug 2026, "Excellent" evaluation): built Python automation tools (pandas, openpyxl, Azure, Microsoft Purview) that cut reporting tasks from days to under an hour, including a bulk rewrite of 1.7 million data catalogue descriptions; ran an "AI Agents in Action" workshop.
+- Fidellio, Co-Founder (Apr to Aug 2026): built a Next.js prototype that reconciles bank transactions with invoices and receipts for bookkeepers.
+
+## Projects
+
+- BillWatch.ca (2026, open source): emails subscribers when a Canadian federal bill changes status. Next.js, TypeScript, Supabase, Resend, Vercel Cron.
+- Personal Agent Fleet (2025 to present): 10+ always-on agents on a VPS with a Claude Opus orchestrator delegating to cheaper models. Claude, OpenRouter, MCP, Python, Docker, Tailscale.
+- AirReserve (2025): real-time flight price tracker built in 6 hours. 1st place, AI Tinkerers Ottawa.
+- AptosAI Guard (2025): ML risk scoring for malicious Aptos wallets. 2nd place, Toronto Consensus ($10,000).
+- Termwise.ca (2025): timetable generator used by 700+ Carleton students. React, Node.js, Supabase.
+
+## Leadership and community
+
+- President, Ottawa Blockchain (Sep 2025 to present); hosted a Web3 x AI summit at Hub350 in Oct 2026.
+- Ambassador, Windsurf (Cognition) (Jul 2025 to Jul 2026): monthly meetups for 100+ developers.
+- Campus Ambassador, Perplexity (Sep to Dec 2025).
+
+## Skills
+
+- Languages: Python, TypeScript, JavaScript, Swift, SQL, C, C++
+- Frameworks: Next.js, React, Node.js, FastAPI, Tailwind CSS, pandas
+- Infrastructure: PostgreSQL (Supabase), Docker, GitHub Actions, Vercel, Azure, Linux
+- AI: OpenRouter, MCP servers, LangChain, Claude Code, Cursor
+
+## Links
+
+- [Resume (PDF)](https://nolandruid.com/resume.pdf)
+- [Email](mailto:NolanDruid@cmail.carleton.ca): NolanDruid@cmail.carleton.ca
+- [X](https://x.com/budwindruid)
+- [GitHub](https://github.com/nolandruid)
+- [LinkedIn](https://www.linkedin.com/in/nolan-druid-922068326/)
