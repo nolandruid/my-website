@@ -4,6 +4,7 @@ This is Nolan's personal site, live at nolandruid.com. Right now it's a one-page
 
 ## Rules
 
+- This repo is public. Anything committed, written in a PR, or deployed can be read by anyone, and git history keeps it even after deletion. Never commit API keys, tokens, or `.env` files (use GitHub Actions secrets), and never publish a phone number, home address, or anything that pins down where Nolan lives, like Strava routes or start points.
 - Don't push straight to `main`. Every push to `main` deploys to the live site, so always work on a branch and open a PR, even for small changes. Nolan merges.
 - Write in a natural, plain tone. That goes for page copy, commit messages, and PR descriptions. No marketing speak, and no em dashes.
 - Don't add "Generated with Claude Code" or any other tool credit to PR descriptions.
