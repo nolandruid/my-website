@@ -6,6 +6,7 @@ This is Nolan's personal site, live at nolandruid.com. Right now it's a one-page
 
 - Don't push straight to `main`. Every push to `main` deploys to the live site, so always work on a branch and open a PR, even for small changes. Nolan merges.
 - Write in a natural, plain tone. That goes for page copy, commit messages, and PR descriptions. No marketing speak, and no em dashes.
+- Don't add "Generated with Claude Code" or any other tool credit to PR descriptions.
 - Keep the site readable by agents. Real content goes in the HTML itself, not behind JavaScript, and `public/llms.txt` should match what the page says. If you change one, update the other.
 - Check changes in a browser at desktop and phone sizes before opening the PR.
 
